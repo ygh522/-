@@ -1,0 +1,207 @@
+/* Plan: phase, weekly schedule (with rescheduling), routines with load prescriptions, cardio. */
+window.F = window.F || {};
+(function (F) {
+  'use strict';
+  const UI = F.UI, V = F.V, A = F.act, esc = F.esc;
+  let weekOffset = 0;
+  let tab = null;
+
+  V.plan = () => {
+    const s = F.S, k = F.today();
+    const ph = F.E.phase();
+    const monday = F.addDays(F.mondayOf(k), weekOffset * 7);
+    const week = F.E.week(monday);
+    const ws = F.E.weekStats(monday);
+    const rot = F.E.rotation();
+    const nextK = F.E.nextPlanned(k);
+    const nextT = nextK ? F.E.templateFor(nextK) : rot[0];
+    if (!tab || !rot.includes(tab)) tab = nextT;
+    const pat = F.PATTERNS[s.settings.freq];
+    const custom = pat.days.slice().sort().join() !== s.settings.days.slice().sort().join();
+
+    /* phase card */
+    const phaseCard = `<div class="card ink">
+      <div class="row between"><span class="t-label mute">PHASE ${ph.id} / 3 · ${ph.en}${ph.cycle > 1 ? ' · CYCLE ' + ph.cycle : ''}</span><span class="tag acc">${ph.reps[0]}~${ph.reps[1]}회 · ${ph.sets}세트</span></div>
+      <h2 class="t-h1" style="color:#fff;margin:10px 0 6px">${esc(ph.name)}</h2>
+      <p class="mute" style="font-size:14px">${esc(ph.goal)}</p>
+      <div class="phase-steps">${F.PHASES.map((p) => `<div class="${p.id === ph.id ? 'on' : p.id < ph.id ? 'past' : ''}"><b>P${p.id}</b>${esc(p.name)}</div>`).join('')}</div>
+      <div class="list" style="margin-top:14px">${ph.focus.map((f, i) => `<div><span class="num-idx">${F.pad(i + 1)}</span><span class="grow">${esc(f)}</span></div>`).join('')}</div>
+      ${ph.nextAt ? `<div style="margin-top:14px"><div class="row between t-xs"><span class="mute">다음 단계까지</span><span class="t-num">${ph.done} / ${ph.nextAt}회</span></div><div class="bar" style="margin-top:6px"><i style="width:${Math.round((ph.done / ph.nextAt) * 100)}%"></i></div><p class="t-xs mute" style="margin-top:6px">달력 기준이 아니라 실제 완료한 운동 횟수로 단계가 올라가요. 빠진 날이 있어도 몸이 준비된 만큼만 진행해요.</p></div>` : '<p class="t-xs mute" style="margin-top:12px">12주 과정을 마쳤어요. 강화기를 반복하며 인바디로 재평가해요.</p>'}
+    </div>`;
+
+    /* week */
+    const rows = week.map((w) => {
+      const t = w.tid ? F.TEMPLATES[w.tid] : null;
+      const isToday = w.k === k;
+      let main = '', act = '';
+      if (w.status === 'rest') main = `<span class="mute">휴식</span>`;
+      else if (w.status === 'moved' || w.status === 'skipped') main = `<span class="mute">${w.ov && w.ov.to ? `${F.dateLabel(w.ov.to)}로 이동` : '건너뜀'}</span>`;
+      else main = `<b style="font-weight:800">${esc(t ? t.name : '')}</b> <span class="t-num mute" style="font-size:13px">${w.time || ''}</span>${w.plan && w.plan.moved ? ' <span class="tag">대체일</span>' : ''}`;
+      if ((w.status === 'planned' || w.status === 'today') && w.k >= k) act = `<button class="btn sm ghost" data-act="open-resched" data-date="${w.k}">약속 생김</button>`;
+      if (w.status === 'today') act = `<button class="btn sm primary" data-act="start-session" data-date="${w.k}">${F.icon('play', 'sm')}시작</button>` + act;
+      if ((w.status === 'moved' || w.status === 'skipped' || (w.plan && w.plan.moved)) && w.k >= k && !w.ses) act += `<button class="btn sm ghost" data-act="undo-ov" data-date="${w.k}" aria-label="되돌리기">${F.icon('refresh', 'sm')}</button>`;
+      if (w.status === 'done' || w.status === 'partial') act = `<span class="tag acc">+${(w.ses && w.ses.xp) || 0} XP</span>`;
+      if (w.status === 'missed') act = `<span class="pill-no">놓침</span>`;
+      return `<div class="${isToday ? 'today-row' : ''}" style="${isToday ? 'background:var(--surface);margin:0 -10px;padding-left:10px;padding-right:10px;border-left:4px solid var(--accent)' : ''}">
+        <div style="width:58px;flex:none"><div class="t-label ${isToday ? 'acc' : 'mute'}">${F.DAY_EN[w.dow]}</div><div class="t-num" style="font-size:17px">${F.dateLabel(w.k, false)}</div></div>
+        ${UI.stamp(w.status === 'today' ? 'today' : w.status)}
+        <div class="grow" style="min-width:0">${main}</div>
+        <div class="row" style="gap:6px;flex:none">${act}</div></div>`;
+    }).join('');
+
+    const weekHtml = `<div class="row between" style="margin-bottom:8px">
+        <button class="icon-btn" data-act="week-nav" data-d="-1" aria-label="이전 주">${F.icon('chevL')}</button>
+        <div style="text-align:center"><div class="t-label mute">${weekOffset === 0 ? 'THIS WEEK' : weekOffset > 0 ? `+${weekOffset} WEEK` : `${weekOffset} WEEK`}</div><div class="t-num-m">${F.dateLabel(monday, false)} – ${F.dateLabel(F.addDays(monday, 6), false)}</div></div>
+        <button class="icon-btn" data-act="week-nav" data-d="1" aria-label="다음 주">${F.icon('chevR')}</button></div>
+      <div class="list">${rows}</div>
+      <div class="row wrap" style="margin-top:12px;gap:6px">
+        <span class="${ws.done >= ws.freq ? 'pill-ok' : 'tag'}">완료 ${ws.done}/${ws.freq}</span>
+        <span class="${ws.weekdayOk ? 'pill-ok' : 'tag'}">주중 ${ws.weekdayDone}/2</span>
+        <span class="tag">예정 ${ws.planned}일</span>
+      </div>
+      <details class="acc" style="margin-top:14px"><summary>왜 이 요일인가요? ${F.icon('chevD', 'sm')}</summary><div>
+        ${pat.reasons.map((r, i) => `<div class="reason"><b>0${i + 1}</b><span>${esc(r)}</span></div>`).join('')}
+        ${custom ? `<div class="callout" style="margin-top:10px">${F.icon('info')}<div><b>요일을 직접 바꿨어요</b>추천 패턴(${esc(pat.title)})과 달라요. ${s.settings.freq <= 3 ? '전신 운동은 연속일이 생기지 않게 배치하는 게 좋아요.' : ''}</div></div>` : ''}
+        <a class="btn sm" href="#/set" style="margin-top:12px">요일 · 시간 바꾸기</a></div></details>`;
+
+    /* routine tabs */
+    const t = F.TEMPLATES[tab];
+    const routine = `<div class="chips" style="margin-bottom:14px">${rot.map((id, i) => `<button class="chip ${id === tab ? 'on' : ''}" data-act="plan-tab" data-id="${id}">${String.fromCharCode(65 + i)} · ${esc(F.TEMPLATES[id].name)}${id === nextT ? ' · 다음' : ''}</button>`).join('')}</div>
+      <div class="card">
+        <div class="row between"><div><div class="t-label mute">${esc(t.en)}</div><h3 class="t-h2" style="margin-top:4px">${esc(t.name)}</h3><p class="t-small mute2">${esc(t.focus)} · 약 ${F.E.estimateMinutes(tab)}분</p></div></div>
+        <div style="margin-top:6px">
+          <div class="exrow" style="border-top:1px solid var(--line-soft)"><div class="thumb">${`<img src="${F.img.ex('warmup')}" alt="" loading="lazy">`}</div><div class="grow"><b>워밍업</b><div class="t-xs mute">러닝머신/사이클 5분 + 동적 스트레칭 4종</div></div><span class="t-num mute" style="font-size:13px">6분</span></div>
+          ${t.ex.filter((id) => F.EXERCISES[id]).map((id, i) => {
+            const ex = F.EXERCISES[id];
+            const p = F.E.prescription(id);
+            return `<div class="exrow"><a class="thumb" href="#/ex/${id}"><img src="${F.img.ex(id)}" alt="" loading="lazy"></a>
+              <div class="grow" style="min-width:0"><a href="#/ex/${id}"><b style="font-weight:800">${F.pad(i + 1)} ${esc(ex.name)}</b></a>
+                <div class="rx">${UI.rx(id)}</div>
+                <div class="row wrap" style="gap:6px 10px;margin-top:4px"><span class="t-xs mute">휴식 ${p.rest}초 · ${p.calibrated ? '<span class="acc" style="font-weight:800">테스트 반영됨</span>' : F.E.isLoaded(ex) ? '추정 시작 무게' : '자세 우선'}</span>
+                <button class="t-xs link" data-act="open-test" data-id="${id}">${F.E.isLoaded(ex) ? '무게 테스트' : '횟수 테스트'} ›</button></div></div></div>`;
+          }).join('')}
+          <div class="exrow"><div class="thumb"><img src="${F.img.ex(F.E.cardioPlan(k, tab).machine)}" alt="" loading="lazy"></div><div class="grow"><b>유산소 · ${esc(F.E.cardioPlan(k, tab).M.short)}</b><div class="rx">${esc(F.E.cardioPlan(k, tab).main)} · ${F.E.cardioPlan(k, tab).min}분</div></div></div>
+          <div class="exrow"><div class="thumb"><img src="${F.img.ex('cooldown')}" alt="" loading="lazy"></div><div class="grow"><b>쿨다운</b><div class="t-xs mute">정적 스트레칭 4종 · 각 30초</div></div><span class="t-num mute" style="font-size:13px">5분</span></div>
+        </div>
+        <div class="callout" style="margin-top:14px">${F.icon('info')}<div><b>무게는 자동으로 조정돼요</b>세트 후 '할만했다 / 조금 어려웠다 / 너무 힘들었다'로 평가하면 다음 세션의 무게·횟수를 다시 계산해요. 처음이라면 '무게 테스트'로 시작 무게를 맞춰보세요.</div></div>
+      </div>`;
+
+    /* cardio */
+    const cp = F.E.cardioPlan(k, tab);
+    const st = F.E.cardioState(cp.machine);
+    const cardio = `<div class="chips" style="margin-bottom:12px">${F.CARDIO_ORDER.map((id) => {
+        const M = F.CARDIO[id]; const locked = M.minPhase && ph.id < M.minPhase;
+        return `<button class="chip ${s.settings.cardio === id ? 'on' : ''}" data-act="cardio-pick" data-id="${id}" ${locked ? 'disabled style="opacity:.45"' : ''}>${locked ? F.icon('lock', 'sm') : ''}${esc(M.short)}</button>`;
+      }).join('')}</div>
+      <div class="card">
+        <div class="grid g-md-2" style="gap:16px">
+          ${UI.exMedia(F.EXERCISES[cp.machine] || { id: cp.machine, name: cp.M.name, layout: '1p' })}
+          <div>
+            <div class="t-label mute">LEVEL ${cp.level} / 12 · ${esc(cp.M.name)}</div>
+            <div class="t-num-l" style="margin:8px 0 2px;font-size:26px">${esc(cp.main)}</div>
+            <div class="t-num-xl">${cp.min}<span class="unit">분</span></div>
+            <div class="grid g2" style="margin-top:14px">
+              <div class="kpi"><span class="t-label">HEART RATE</span><div class="t-num-m">${cp.hr.lo}–${cp.hr.hi}<span class="unit">bpm</span></div></div>
+              <div class="kpi"><span class="t-label">BURN</span><div class="t-num-m">~${F.num(cp.kcal)}<span class="unit">kcal</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="list" style="margin-top:14px">${cp.segments.map((sg) => `<div><span class="t-label mute" style="width:64px">${esc(sg.label)}</span><span class="grow">${esc(sg.text)}</span><span class="t-num">${sg.min}분</span></div>`).join('')}</div>
+        <div class="callout" style="margin-top:14px">${F.icon('heart')}<div><b>왜 이 설정인가요?</b>체중 ${F.num1(F.E.body().weight)}kg인 지금은 달리기보다 경사 걷기가 무릎 부담은 적고 지방 연소 구간(최대심박의 60~70%, ${cp.hr.lo}–${cp.hr.hi}bpm)을 오래 유지하기 좋아요. 말은 할 수 있지만 노래는 힘든 강도가 정답이에요. 끝나고 평가하면 다음 강도가 자동으로 조절돼요${cp.capped ? ' (현재 단계 최대치에 도달 — 다음 단계에서 더 올라가요)' : ''}.</div></div>
+        ${st.hist.length ? `<p class="t-xs mute" style="margin-top:10px">최근 기록: ${st.hist.slice(-3).map((h) => `${F.dateLabel(h.d, false)} ${h.min}분(${F.E.RATING[h.rating].label})`).join(' · ')}</p>` : ''}
+      </div>`;
+
+    return `${UI.ph('PLAN', '운동 플랜', `${esc(F.josa(F.coachName(), '이/가'))} 짠 주 ${s.settings.freq}회 루틴이에요. 기록할수록 무게와 유산소 강도가 내 몸에 맞게 조정돼요.`)}
+      <div class="cols">
+        <div>
+          <section>${phaseCard}</section>
+          <section class="sec">${UI.secH('SCHEDULE', '주간 스케줄', '')}${weekHtml}</section>
+        </div>
+        <div>
+          <section class="sec">${UI.secH('ROUTINE', '루틴 · 무게 처방', '')}${routine}</section>
+          <section class="sec">${UI.secH('CARDIO', '유산소 세팅값', '')}${cardio}</section>
+        </div>
+      </div>`;
+  };
+
+  A['week-nav'] = (el) => { weekOffset = F.clamp(weekOffset + +el.dataset.d, -26, 8); UI.refresh(); };
+  A['plan-tab'] = (el) => { tab = el.dataset.id; UI.refresh(); };
+  A['cardio-pick'] = (el) => { F.S.settings.cardio = el.dataset.id; F.save(); UI.refresh(); };
+  A['undo-ov'] = (el) => { F.E.undoOverride(el.dataset.date); F.toast('원래 일정으로 되돌렸어요'); UI.refresh(); };
+
+  /* ---------- Reschedule sheet ---------- */
+  A['open-resched'] = (el) => {
+    const k = el.dataset.date;
+    const r = F.E.rescheduleOptions(k);
+    const t = F.TEMPLATES[r.tid];
+    const opts = r.options.map((o, i) => `<button class="opt ${i === 0 ? 'best' : ''}" data-act="do-resched" data-from="${k}" data-to="${o.date}">
+        <div class="row between"><span class="t-h3">${F.dateLabel(o.date)} · ${F.S.settings.gymTime}</span>${i === 0 ? '<span class="tag dark">추천</span>' : ''}</div>
+        <ul class="why">${o.why.map((w) => `<li>${esc(w)}</li>`).join('')}${o.warn.map((w) => `<li class="w">${esc(w)}</li>`).join('')}</ul></button>`).join('');
+    F.sheet(`<div class="t-label mute">RESCHEDULE</div>
+      <h2 class="t-h1" style="margin:6px 0 6px">약속이 생겼나요?</h2>
+      <p class="mute2">${F.dateLabel(k)} <b>${esc(t ? t.name : '')}</b> 대신 갈 수 있는 날을 회복 시간과 '주중 2회' 원칙에 맞춰 골랐어요.</p>
+      <div style="margin-top:16px">${opts || `<div class="empty">이번 주에는 옮길 수 있는 날이 없어요.<br>건너뛰어도 루틴 순서는 그대로 이어져요 — 다음 운동이 오늘 루틴(${esc(t ? t.name : '')})이 돼요.</div>`}</div>
+      <div class="divider"></div>
+      <button class="btn block ghost" data-act="do-resched" data-from="${k}" data-to="">이번엔 그냥 건너뛰기</button>
+      <p class="t-xs mute" style="margin-top:8px">건너뛰어도 다음 세션은 놓친 루틴부터 이어서 진행돼요. 대신 주간 목표 달성 보너스는 못 받을 수 있어요.</p>`);
+  };
+  A['do-resched'] = (el) => {
+    const from = el.dataset.from, to = el.dataset.to || null;
+    F.E.applyReschedule(from, to, '약속');
+    F.closeSheet();
+    F.toast(to ? `${F.dateLabel(to)}로 옮겼어요. 알람도 같이 옮겨졌어요.` : '이번 운동은 건너뛸게요. 다음에 이어서 해요.');
+    F.render();
+  };
+
+  /* ---------- Load test (calibration) sheet ---------- */
+  const T = { id: null, w: 0, r: 12, rating: null };
+  A['open-test'] = (el) => {
+    const id = el.dataset.id;
+    const ex = F.EXERCISES[id];
+    const p = F.E.prescription(id);
+    T.id = id; T.w = p.w || 0; T.r = ex.unit === 'sec' ? p.r : Math.max(p.r, ex.unit === 'bw' ? p.r : 12); T.rating = null;
+    renderTest();
+  };
+  const renderTest = (result) => {
+    const ex = F.EXERCISES[T.id];
+    const loaded = F.E.isLoaded(ex);
+    const unitTxt = ex.unit === 'sec' ? '초' : '회';
+    const html = `<div class="t-label mute">${loaded ? 'LOAD TEST' : 'REP TEST'}</div>
+      <h2 class="t-h1" style="margin:6px 0 6px">${esc(ex.name)} ${loaded ? '무게 찾기' : '횟수 찾기'}</h2>
+      <p class="mute2">${loaded ? '자세가 무너지지 않는 무게로 한 세트 해보세요. 몇 kg으로 몇 회 했는지, 느낌이 어땠는지 알려주면 지금 단계에 맞는 무게·횟수·세트를 다시 짜드려요.' : '좋은 자세로 할 수 있는 만큼 해보고, 기록과 느낌을 알려주세요.'}</p>
+      ${UI.exMedia(ex)}
+      <div class="grid ${loaded ? 'g2' : ''}" style="margin-top:16px">
+        ${loaded ? `<div class="field" style="margin:0"><span>무게 ${ex.unit === 'kg_each' ? '(한 손)' : ''}</span><div class="stepper"><button data-act="t-step" data-k="w" data-d="-1" aria-label="무게 감소">${F.icon('minus')}</button><div class="v"><span id="t-w">${F.num1(T.w)}</span><small>kg</small></div><button data-act="t-step" data-k="w" data-d="1" aria-label="무게 증가">${F.icon('plus')}</button></div></div>` : ''}
+        <div class="field" style="margin:0"><span>${ex.unit === 'sec' ? '버틴 시간' : '반복 횟수'}</span><div class="stepper"><button data-act="t-step" data-k="r" data-d="-1" aria-label="감소">${F.icon('minus')}</button><div class="v"><span id="t-r">${T.r}</span><small>${unitTxt}</small></div><button data-act="t-step" data-k="r" data-d="1" aria-label="증가">${F.icon('plus')}</button></div></div>
+      </div>
+      <div class="field" style="margin-top:16px"><span>느낌은 어땠나요?</span>
+        <div class="stack">${Object.entries(F.E.RATING).map(([key, r]) => `<button class="opt ${T.rating === key ? 'best' : ''}" data-act="t-rate" data-v="${key}" style="${T.rating === key ? 'background:var(--ink);color:var(--bg)' : ''}"><div class="row between"><b class="t-h3">${esc(r.label)}</b><span class="t-label">${r.en}</span></div><div class="t-xs" style="opacity:.75;margin-top:2px">${esc(r.desc)}</div></button>`).join('')}</div></div>
+      ${result ? `<div class="card ink" style="margin-top:16px"><div class="t-label mute">NEW PRESCRIPTION</div>
+          <div class="t-num-xl" style="color:#fff;margin:8px 0">${loaded ? F.E.loadLabel(ex, result.w) + ' × ' : ''}${F.E.repsLabel(ex, result.r)} × ${result.sets}세트</div>
+          <div class="list">${result.explain.map((x, i) => `<div><span class="num-idx">${F.pad(i + 1)}</span><span class="grow t-small">${esc(x)}</span></div>`).join('')}</div></div>
+          <button class="btn primary lg block" style="margin-top:12px" data-act="sheet-close">확인 — 이 무게로 진행할게요</button>`
+        : `<button class="btn primary lg block" style="margin-top:16px" data-act="t-calc" ${T.rating ? '' : 'disabled'}>루틴 다시 짜기</button>`}`;
+    const open = F.$('.sheet-wrap.on .sheet-body');
+    if (open && open.dataset.test === '1') { open.innerHTML = html; return; }
+    const w = F.sheet(html);
+    F.$('.sheet-body', w).dataset.test = '1';
+  };
+  A['t-step'] = (el) => {
+    const ex = F.EXERCISES[T.id];
+    const d = +el.dataset.d;
+    if (el.dataset.k === 'w') T.w = Math.max(0, F.E.stepLoad(ex, T.w || (ex.equip === 'barbell' ? 20 : 0), d));
+    else T.r = Math.max(1, T.r + d * (ex.unit === 'sec' ? 5 : 1));
+    const wEl = F.$('#t-w'), rEl = F.$('#t-r');
+    if (wEl) wEl.textContent = F.num1(T.w);
+    if (rEl) rEl.textContent = T.r;
+  };
+  A['t-rate'] = (el) => { T.rating = el.dataset.v; renderTest(); };
+  A['t-calc'] = () => {
+    const ex = F.EXERCISES[T.id];
+    const res = F.E.calibrate(T.id, F.E.isLoaded(ex) ? T.w : null, T.r, T.rating);
+    F.E.addXP(`test:${T.id}:${F.today()}`, 10, `${ex.name} 무게 테스트`);
+    F.E.checkBadges();
+    renderTest(res);
+    if (['plan', 'ex', 'home'].includes(F.route().name)) setTimeout(() => UI.refresh(), 0);
+  };
+})(window.F);
