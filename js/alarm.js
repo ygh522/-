@@ -112,7 +112,7 @@ window.F = window.F || {};
         const t = F.TEMPLATES[tid];
         const st = F.timeToMin(pl.time);
         const dur = F.E.estimateMinutes(tid) || 75;
-        const exNames = t.ex.map((id) => (F.EXERCISES[id] ? F.EXERCISES[id].name : id)).join(', ');
+        const exNames = F.E.templateEx(t.id).map((id) => F.EXERCISES[id].name).join(', ');
         lines.push('BEGIN:VEVENT',
           `UID:mypt-${k}@mypt.local`, `DTSTAMP:${dtstamp}`,
           `DTSTART;TZID=Asia/Seoul:${stamp(k, st)}`, `DTEND;TZID=Asia/Seoul:${stamp(k, Math.min(st + dur, 23 * 60 + 59))}`,

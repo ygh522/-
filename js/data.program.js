@@ -213,3 +213,48 @@ F.BADGES = [
   { id: 'comeback', name: '대체 출석', desc: '약속이 생겨도 대체일에 출석했어요', icon: 'swap' },
   { id: 'meal7', name: '식단 7일', desc: '식단 체크 7일 달성', icon: 'bowl' },
 ];
+
+/* =========================================================
+   V3 — split programs, movement-pattern ladders (beginner → intermediate), sore-area swaps
+   ========================================================= */
+/* 3-day split (push / pull / legs) for intermediates */
+F.TEMPLATES.PU = { id: 'PU', name: '밀기', en: 'PUSH', region: 'upper',
+  ex: ['db_bench', 'shoulder_press', 'pushup', 'lateral_raise', 'triceps_pushdown', 'plank'],
+  focus: '가슴 · 어깨 · 팔 뒤쪽 — 미는 근육을 한날에' };
+F.TEMPLATES.PL = { id: 'PL', name: '당기기', en: 'PULL', region: 'upper',
+  ex: ['lat_pulldown', 'db_row', 'seated_row', 'face_pull', 'db_curl', 'bird_dog'],
+  focus: '등 · 어깨 뒤 · 팔 앞쪽 — 당기는 근육을 한날에' };
+F.TEMPLATES.LG = { id: 'LG', name: '하체', en: 'LEGS', region: 'lower',
+  ex: ['goblet_squat', 'db_rdl', 'leg_press', 'reverse_lunge', 'leg_curl', 'dead_bug'],
+  focus: '스쿼트 · 힙힌지 · 런지 — 허벅지 앞뒤와 엉덩이' };
+
+/* Which templates a split cycles through (the cycle runs across weeks, so a missed day never skips one) */
+F.SPLIT_ROT = { full: ['FA', 'FB', 'FC'], ul: ['UA', 'LA', 'UB', 'LB'], ppl: ['PU', 'PL', 'LG'] };
+F.SPLIT_ORDER = ['full', 'ul', 'ppl'];
+
+/* Movement groups. ladder = the beginner → intermediate order (bodyweight/machine → dumbbell → barbell);
+   side = same muscles, different tool. Swaps and level-ups stay inside a group. */
+F.GROUPS = [
+  { id: 'squat', label: '스쿼트', ladder: ['bw_squat', 'goblet_squat', 'back_squat'], side: ['leg_press'] },
+  { id: 'hinge', label: '힙힌지', ladder: ['glute_bridge', 'db_rdl', 'deadlift'], side: ['hip_thrust'] },
+  { id: 'lunge', label: '런지', ladder: ['split_squat', 'reverse_lunge'], side: [] },
+  { id: 'push_h', label: '가슴 밀기', ladder: ['incline_pushup', 'pushup', 'db_bench', 'bench_press'], side: ['chest_press'] },
+  { id: 'push_v', label: '어깨 밀기', ladder: ['shoulder_press', 'db_shoulder_press', 'ohp'], side: [] },
+  { id: 'pull_h', label: '등 · 로우', ladder: ['seated_row', 'db_row', 'barbell_row'], side: [] },
+  { id: 'pull_v', label: '등 · 위에서 당기기', ladder: ['lat_pulldown', 'assisted_pullup'], side: [] },
+  { id: 'core', label: '코어', ladder: ['dead_bug', 'bird_dog', 'plank'], side: [] },
+  { id: 'leg_acc', label: '하체 보조', ladder: [], side: ['leg_extension', 'leg_curl', 'hip_abduction'] },
+  { id: 'up_acc', label: '상체 보조', ladder: [], side: ['lateral_raise', 'face_pull', 'triceps_pushdown', 'db_curl'] },
+];
+
+/* Sore area → what to do with exercises that load it today (id → substitute, null = leave out) */
+F.SORE_SWAP = {
+  shoulder: { ohp: null, db_shoulder_press: null, shoulder_press: null, bench_press: null, db_bench: null, chest_press: null,
+    pushup: null, incline_pushup: null, lateral_raise: null, assisted_pullup: 'seated_row', lat_pulldown: 'seated_row' },
+  back: { deadlift: 'glute_bridge', db_rdl: 'glute_bridge', hip_thrust: 'glute_bridge', back_squat: 'leg_press', goblet_squat: 'leg_press',
+    barbell_row: 'seated_row', db_row: 'seated_row', ohp: 'shoulder_press', split_squat: null, reverse_lunge: null },
+  knee: { back_squat: 'glute_bridge', goblet_squat: 'glute_bridge', bw_squat: 'glute_bridge', leg_press: 'hip_thrust',
+    split_squat: 'leg_curl', reverse_lunge: 'leg_curl', leg_extension: 'leg_curl' },
+  wrist: { pushup: 'chest_press', incline_pushup: 'chest_press', bench_press: 'chest_press', db_bench: 'chest_press',
+    ohp: 'shoulder_press', db_shoulder_press: 'shoulder_press', db_curl: null, bird_dog: 'dead_bug' },
+};

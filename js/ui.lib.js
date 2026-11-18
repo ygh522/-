@@ -7,31 +7,54 @@ window.F = window.F || {};
   'use strict';
   const UI = F.UI, V = F.V, A = F.act, esc = F.esc;
   let part = 'all';
+  let kind = 'all';
+  const KIND = { all: '전체', bw: '맨몸', machine: '머신', free: '프리웨이트', cardio: '유산소 · 스트레칭' };
+  const kindOf = (ex) => (['bodyweight', 'mat'].includes(ex.equip) && ex.part !== 'mobility' ? 'bw' : ['machine', 'cable'].includes(ex.equip) ? 'machine' : ['barbell', 'dumbbell'].includes(ex.equip) ? 'free' : 'cardio');
+  const LV = ['', '입문', '초급', '중급'];
 
   const ids = () => (F.EX_ORDER || Object.keys(F.EXERCISES)).filter((id) => F.EXERCISES[id]);
-  const filtered = () => ids().filter((id) => part === 'all' || (F.EXERCISES[id].parts || [F.EXERCISES[id].part]).includes(part));
+  const filtered = () => ids().filter((id) => (part === 'all' || (F.EXERCISES[id].parts || [F.EXERCISES[id].part]).includes(part)) && (kind === 'all' || kindOf(F.EXERCISES[id]) === kind))
+    .map((id, i) => [id, i]).sort((a, b) => ((F.EXERCISES[a[0]].level || 1) - (F.EXERCISES[b[0]].level || 1)) || a[1] - b[1]).map((x) => x[0]);
   const EQUIP = { machine: '머신', cable: '케이블', barbell: '바벨', dumbbell: '덤벨', bodyweight: '맨몸', mat: '매트', cardio: '유산소 기구' };
 
   const chips = () => {
     const counts = {};
     for (const id of ids()) for (const p of F.EXERCISES[id].parts || [F.EXERCISES[id].part]) counts[p] = (counts[p] || 0) + 1;
-    return `<div class="chips">${(F.PARTS || []).filter((p) => p.id === 'all' || counts[p.id]).map((p) => `<button class="chip ${part === p.id ? 'on' : ''}" data-act="lib-part" data-id="${p.id}">${esc(p.label)} <span class="t-num" style="opacity:.55">${p.id === 'all' ? ids().length : counts[p.id]}</span></button>`).join('')}</div>`;
+    return `<div class="chips">${Object.entries(KIND).map(([k, l]) => `<button class="chip ${kind === k ? 'on' : ''}" data-act="lib-kind" data-id="${k}">${esc(l)}</button>`).join('')}</div>
+      <div class="chips" style="margin-top:8px">${(F.PARTS || []).filter((p) => p.id === 'all' || counts[p.id]).map((p) => `<button class="chip ${part === p.id ? 'on' : ''}" data-act="lib-part" data-id="${p.id}">${esc(p.label)} <span class="t-num" style="opacity:.55">${p.id === 'all' ? ids().length : counts[p.id]}</span></button>`).join('')}</div>`;
   };
   const card = (id, on) => {
     const ex = F.EXERCISES[id];
     return `<a class="excard ${on ? 'on' : ''}" href="${F.exHref(id)}" style="${on ? 'border-color:var(--line);outline:2px solid var(--ink);outline-offset:-2px' : ''}"><div class="media"><img src="${F.img.ex(id)}" alt="" loading="lazy"></div>
-      <div class="body"><div class="name">${esc(ex.name)}</div><div class="meta">${esc(EQUIP[ex.equip] || '')} · ${esc((ex.muscles || []).slice(0, 2).join(' · '))}</div></div></a>`;
+      <div class="body"><div class="name">${esc(ex.name)}</div><div class="meta"><b class="lv lv${ex.level || 1}">${LV[ex.level || 1] || ''}</b> ${esc(EQUIP[ex.equip] || '')} · ${esc((ex.muscles || []).slice(0, 2).join(' · '))}</div></div></a>`;
   };
 
   V.lib = () => {
     if (UI.isPC()) { const first = filtered()[0]; return V.ex([first], true); }
-    return `<div class="page">${UI.ph('EXERCISE GUIDE', '자세 가이드', '헬스장 기구 · 프리웨이트 · 맨몸 운동의 정확한 자세예요. 위는 시작, 아래는 끝 자세이고 주황색이 지금 쓰는 근육이에요.')}
+    return `<div class="page">${UI.ph('EXERCISE GUIDE', '자세 가이드', '초보에서 중급까지 꼭 필요한 기본 운동만 모았어요. 위는 시작, 아래는 끝 자세이고 주황색이 지금 쓰는 근육이에요. 사진 속 번호가 체크 포인트예요.')}
       ${chips()}<div class="ex-grid" style="margin-top:12px">${filtered().map((id) => card(id)).join('')}</div></div>`;
+  };
+  A['lib-kind'] = (el) => {
+    kind = el.dataset.id;
+    if (UI.isPC()) { const first = filtered()[0]; if (first) location.hash = F.exHref(first); F.render(); }
+    else UI.refresh();
   };
   A['lib-part'] = (el) => {
     part = el.dataset.id;
     if (UI.isPC()) { const first = filtered()[0]; location.hash = F.exHref(first); F.render(); }
     else UI.refresh();
+  };
+
+  /** Where this exercise sits on the beginner → intermediate path of its movement. */
+  const ladder = (ex) => {
+    const g = F.E.groupOf(ex.id);
+    if (!g || (!g.ladder.length && g.side.length < 2)) return '';
+    const steps = g.ladder.filter((x) => F.EXERCISES[x]);
+    const side = g.side.filter((x) => F.EXERCISES[x] && x !== ex.id);
+    const chip = (x) => `<a class="ld ${x === ex.id ? 'on' : ''}" href="${F.exHref(x)}"><span class="t-label">${LV[F.EXERCISES[x].level || 1] || ''}</span><b>${esc(F.EXERCISES[x].name)}</b></a>`;
+    return `<section class="sec">${UI.secH('PATH', `${esc(g.label)} 단계`, '')}
+      ${steps.length ? `<div class="ladder">${steps.map(chip).join('<i>→</i>')}</div><p class="t-xs mute" style="margin-top:6px">맨몸 · 머신 → 덤벨 → 바벨 순서로 배우면 자세가 무너지지 않고 무게를 올릴 수 있어요. 두 번 연속 안정적으로 해내면 플랜에서 다음 단계를 추천해 드려요.</p>` : ''}
+      ${side.length ? `<div class="t-xs mute2" style="margin-top:8px">같은 근육, 다른 기구: ${side.map((x) => `<a class="link" href="${F.exHref(x)}">${esc(F.EXERCISES[x].name)}</a>`).join(' · ')}</div>` : ''}</section>`;
   };
 
   const detail = (ex) => {
@@ -53,7 +76,9 @@ window.F = window.F || {};
       <h1 class="t-title" style="margin:6px 0 10px">${esc(ex.name)}</h1>
       <div class="tags">${(ex.muscles || []).map((m) => `<span class="tag ink">${esc(m)}</span>`).join('')}${(ex.secondary || []).map((m) => `<span class="tag">${esc(m)}</span>`).join('')}<span class="tag line">${esc(ex.equipLabel || '')}</span></div>
       <section class="sec">${UI.secH('CHECKPOINT', '사진 속 번호 = 핵심 포인트', '')}<div class="cues">${(ex.cues || []).map((c, i) => `<div class="cue"><b>${i + 1}</b>${esc(c)}</div>`).join('')}</div><p class="t-xs mute" style="margin-top:6px">${marks}</p></section>
-      ${rx}`;
+      ${ladder(ex)}
+      ${rx}
+      <button class="btn block" data-act="ask-ex" data-id="${id}" style="margin-top:14px">${F.icon('chat', 'sm')}이 운동 ${esc(F.coachName())}에게 질문하기</button>`;
     const textB = `
       ${moves}
       ${ex.setup && ex.setup.length ? `<section class="sec">${UI.secH('SETUP', '기구 세팅 · 준비', '')}<ol class="steps">${ex.setup.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>` : ''}

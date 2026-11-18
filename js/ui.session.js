@@ -8,6 +8,17 @@ window.F = window.F || {};
   let tick = null, wake = null;
 
   const act = () => F.S.active;
+  /** A trainer line for this moment ({name} = coach, {me} = the member). */
+  const line = (key, i = 0) => {
+    const L = (F.COACH_LINES || {})[key];
+    if (!L || !L.length) return '';
+    return L[Math.abs(i) % L.length].replace(/\{name\}/g, F.coachName()).replace(/\{me\}/g, UI.myName() || '회원');
+  };
+  SS.line = line;
+  const coachRow = (text, pose) => text ? `<div class="s-coach"><img src="${F.coachImg(pose || 'face')}" alt=""><div><b>${esc(F.coachName())}</b><span>${esc(text)}</span></div></div>` : '';
+  const cardioOpts = (step) => (step ? { machine: step.machine, min: step.min, dl: step.dl || 0 } : {});
+  const cardioStep = (a) => a.steps.find((x) => x.type === 'cardio');
+  const light = (a) => a.cond === 'tired' || a.cond === 'bad';
   const el = () => F.$('#session');
   const fmtClock = (sec) => {
     sec = Math.max(0, Math.round(sec));
@@ -109,7 +120,7 @@ window.F = window.F || {};
       if (step.type === 'cardio') {
         let accm = 0;
         const segs = F.$$('.seg-row');
-        const cp = F.E.cardioPlan(a.date, a.templateId);
+        const cp = F.E.cardioPlan(a.date, a.templateId, cardioOpts(step));
         cp.segments.forEach((sg, i) => {
           const on = el2 / 60 >= accm && el2 / 60 < accm + sg.min;
           if (segs[i]) segs[i].classList.toggle('on', on && a.timer.running);
@@ -144,6 +155,75 @@ window.F = window.F || {};
 
   const R = {};
 
+  /* 0. today's condition → the session adapts like a trainer would */
+  const DEF_COND = { great: { label: '최고예요', sub: '잠 잘 잤고 힘이 넘쳐요' }, normal: { label: '보통이에요', sub: '평소와 비슷해요' }, tired: { label: '피곤해요', sub: '잠이 부족하거나 몸이 무거워요' }, bad: { label: '많이 안 좋아요', sub: '기운이 없고 많이 지쳤어요' } };
+  const DEF_SORE = { shoulder: { label: '어깨' }, back: { label: '허리' }, knee: { label: '무릎' }, wrist: { label: '손목' } };
+  if (!F.COND) F.COND = DEF_COND;
+  if (!F.SORE) F.SORE = DEF_SORE;
+  R.check = (a) => {
+    const o = (a.pre = a.pre || { cond: 'normal', sore: [], time: 'full' });
+    const C = F.COND || DEF_COND;
+    const plan = F.E.sessionPlan(a.date, a.templateId, o);
+    const t = F.TEMPLATES[a.templateId] || {};
+    const first = !F.E.doneSessions().length;
+    const condBtns = ['great', 'normal', 'tired', 'bad'].map((k) => {
+      const c = C[k] || { label: k, sub: '' };
+      return `<button class="cond ${o.cond === k ? 'on' : ''}" data-act="s-cond" data-v="${k}"><b>${esc(c.label)}</b><span>${esc(c.sub || '')}</span></button>`;
+    }).join('');
+    const sore = ['shoulder', 'back', 'knee', 'wrist'].map((k) => `<button class="chip ${o.sore.includes(k) ? 'on' : ''}" data-act="s-sore" data-v="${k}">${esc(((F.SORE || {})[k] || {}).label || k)}</button>`).join('');
+    const changes = [].concat(
+      plan.notes,
+      plan.swaps.map((x) => `${F.EXERCISES[x.from].name} → ${F.EXERCISES[x.to].name} (${((F.SORE || {})[x.area] || {}).label || ''} 보호)`),
+      plan.removed.filter((x) => x.area).map((x) => `${F.EXERCISES[x.id].name} 빼기 (${((F.SORE || {})[x.area] || {}).label || ''} 보호)`)
+    );
+    const soreAdvice = o.sore.map((k) => ((F.SORE || {})[k] || {}).advice).filter(Boolean);
+    const body = `<div class="s-pad">
+        ${coachRow(first ? line('firstDay') : ((C[o.cond] || {}).line || line('form')).replace(/\{name\}/g, F.coachName()).replace(/\{me\}/g, UI.myName() || '회원'), 'coach')}
+        <div class="t-label" style="margin-top:18px">CONDITION CHECK · ${esc(t.name || '')}</div>
+        <h1 class="t-h1" style="margin:6px 0 12px">오늘 몸 상태는 어때요?</h1>
+        <div class="cond-grid">${condBtns}</div>
+        <div class="t-label" style="margin-top:18px">아픈 곳이 있나요? <span style="text-transform:none;letter-spacing:0">(선택)</span></div>
+        <div class="chips s-chips" style="margin-top:8px">${sore}</div>
+        ${soreAdvice.length ? `<p class="t-xs mute" style="margin-top:8px">${soreAdvice.map(esc).join('<br>')}</p>` : ''}
+        <div class="t-label" style="margin-top:18px">오늘 쓸 수 있는 시간</div>
+        <div class="seg s-seg" style="margin-top:8px">${Object.entries(F.TIME || { full: { label: '기본', sub: '' }, short: { label: '짧게', sub: '약 30분' } }).map(([k, v]) => `<button class="${o.time === k ? 'on' : ''}" data-act="s-time" data-v="${k}">${esc(v.label)} <small>${esc(v.sub || '')}</small></button>`).join('')}</div>
+        ${o.time === 'short' && F.TIME_LINE ? `<p class="t-xs mute" style="margin-top:8px">${esc(F.TIME_LINE)}</p>` : ''}
+        <div class="s-card" style="margin-top:18px">
+          <div class="row between"><span class="t-label">TODAY'S PLAN</span><span class="t-num">${plan.items.length}종목 · 약 ${F.E.estimateMinutes(a.templateId, o)}분</span></div>
+          <div class="s-plan">${plan.items.map((it, i) => { const ex = F.EXERCISES[it.exId]; return `<div><span class="t-num">${F.pad(i + 1)}</span><span class="grow">${esc(ex.name)}</span><span class="t-num">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, it.w) + ' · ' : ''}${it.sets}세트</span></div>`; }).join('')}
+            <div><span class="t-num">${F.icon('heart', 'sm')}</span><span class="grow">유산소</span><span class="t-num">${plan.cardio.min}분</span></div></div>
+          ${changes.length ? `<ul class="s-changes">${changes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="t-xs mute" style="margin-top:8px">계획대로 진행해요.</p>'}
+        </div>
+      </div>`;
+    const foot = `<button class="btn primary lg block" data-act="s-check-go">${F.icon('play')}이대로 시작</button>`;
+    return { body, foot };
+  };
+
+  /* before the first set of every exercise: check the three numbered points in the photo */
+  R.form = (a, step) => {
+    const ex = F.EXERCISES[step.exId];
+    const info = exIndexInfo(a, step.exId);
+    const cues = ex.cues || [];
+    const fc = ((a.fc = a.fc || {})[ex.id] = a.fc[ex.id] || cues.map(() => false));
+    const all = fc.every(Boolean);
+    const firstSet = a.steps.find((x) => x.type === 'set' && x.exId === ex.id) || {};
+    const where = ex.mark === 'start' ? '위(START) 사진의 번호' : ex.mark === 'image' ? '사진 속 번호' : ex.mark === 'grid' ? '각 칸의 번호' : '아래(FINISH) 사진의 번호';
+    const target = `${F.E.isLoaded(ex) ? F.E.loadLabel(ex, firstSet.w) + ' × ' : ''}${F.E.repsLabel(ex, firstSet.r)} × ${firstSet.of || 0}세트 · 휴식 ${firstSet.rest || 0}초`;
+    const body = `<div class="s-exfig">${UI.exFig(ex, { eager: true, switch: true })}</div>
+      <div class="s-pad">
+        <div class="row between"><span class="t-label">FORM CHECK · EXERCISE ${info.idx}/${info.n}</span><button class="t-xs link" data-act="s-detail" data-id="${ex.id}" style="color:#ddd">자세 자세히</button></div>
+        <h1 class="t-h1" style="margin:6px 0 10px">${esc(ex.name)}</h1>
+        ${coachRow(line('form', info.idx - 1))}
+        <div class="t-label" style="margin-top:16px">${esc(where)}을 보며 하나씩 눌러 확인해요</div>
+        <div class="fc-list">${cues.map((c, i) => `<button class="fc ${fc[i] ? 'on' : ''}" data-act="s-fc" data-i="${i}"><b>${i + 1}</b><span>${esc(c)}</span>${F.icon('check', 'sm')}</button>`).join('')}</div>
+        <div class="s-card" style="margin-top:14px"><span class="t-label">오늘 목표</span><div class="t-num-m" style="margin-top:4px;color:#fff">${esc(target)}</div>${ex.tempo ? `<div class="t-xs mute" style="margin-top:4px">템포 ${esc(ex.tempo)} (내리기-멈춤-올리기 초)</div>` : ''}</div>
+        ${ex.setup && ex.setup.length ? `<details class="s-acc"><summary>기구 세팅 · 준비 ${F.icon('chevD', 'sm')}</summary><ol class="steps">${ex.setup.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>` : ''}
+      </div>`;
+    const foot = `<button class="btn ${all ? 'primary' : 'dim'} lg block" data-act="s-form-go">${all ? F.icon('check') + '준비 완료 · 1세트 시작' : `포인트 ${fc.filter(Boolean).length}/${cues.length} 확인`}</button>
+      <button class="btn ghost block s-skip" data-act="s-form-go" data-skip="1">바로 시작하기</button>`;
+    return { body, foot };
+  };
+
   R.warmup = R.cooldown = (a, step) => {
     const ex = F.EXERCISES[step.exId] || { name: step.type === 'warmup' ? '워밍업' : '쿨다운', moves: [] };
     const t = timerOf(a); if (t.key !== a.i) Object.assign(t, { key: a.i, running: false, acc: 0, since: null, beeped: false });
@@ -175,13 +255,14 @@ window.F = window.F || {};
     }
     if (a.rest) return R.rest(a, step, ex);
     const unitLbl = ex.unit === 'sec' ? '초' : '회';
-    const loadBig = loaded ? `<span class="t-mega">${F.num1(a.cur.w)}</span><span class="t-num-m" style="color:#888">kg${ex.unit === 'kg_each' ? ' ×2' : ''}</span><span class="x">×</span>` : '';
+    const loadBig = loaded ? `${ex.assist ? '<span class="t-label" style="align-self:center">보조</span>' : ''}<span class="t-mega">${F.num1(a.cur.w)}</span><span class="t-num-m" style="color:#888">kg${ex.unit === 'kg_each' ? ' ×2' : ''}</span><span class="x">×</span>` : '';
     const body = `<div class="s-exfig">${UI.exFig(ex, { eager: true })}</div>
       <div class="s-pad">
         <div class="row between"><span class="t-label">EXERCISE ${info.idx}/${info.n} · SET ${step.set}/${step.of}</span><button class="t-xs link" data-act="s-detail" data-id="${ex.id}" style="color:#ddd">자세 자세히</button></div>
         <h1 class="t-h1" style="margin:6px 0 2px">${esc(ex.name)}</h1>
-        <div class="t-small mute">${esc((ex.muscles || []).join(' · '))}${a.consecutive ? ' · 연속 운동일이라 1세트 줄였어요' : ''}</div>
+        <div class="t-small mute">${esc((ex.muscles || []).join(' · '))}${a.consecutive ? ' · 연속 운동일이라 1세트 줄였어요' : ''}${light(a) && step.set === 1 ? ' · 오늘은 컨디션에 맞춰 가볍게' : ''}</div>
         <div class="rx" style="margin-top:14px">${loadBig}<span class="t-mega" style="color:var(--hot)" id="cur-r">${a.cur.r}</span><span class="t-num-m" style="color:#888">${ex.repsUnit && ex.repsUnit.includes('한쪽') ? '회 (한쪽)' : unitLbl}</span></div>
+        ${step.set === 1 ? coachRow(line('setStart', info.idx)) : step.set === step.of ? coachRow('마지막 세트예요. 마지막 2회가 진짜 운동이에요 — 자세는 끝까지!') : ''}
         <div class="cues" style="margin-top:16px">${(ex.cues || []).map((c, i) => `<div class="cue"><b>${i + 1}</b>${esc(c)}</div>`).join('')}</div>
         <div class="t-label" style="margin-top:20px">실제로 한 기록 (다르면 조정)</div>
         <div class="grid ${loaded ? 'g2' : ''}" style="margin-top:8px">
@@ -209,6 +290,8 @@ window.F = window.F || {};
           <div class="t-num-l" style="margin-top:6px;color:#fff">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, a.cur.w) + ' × ' : ''}${F.E.repsLabel(ex, a.cur.r)}</div>
           <p class="t-small mute" style="margin-top:8px">${esc((ex.cues || [])[a.rest.cue % Math.max(1, (ex.cues || []).length)] || '')} — 다음 세트에서 이것 하나만 신경 써요.</p>
         </div>
+        <div style="margin-top:14px;text-align:left">${coachRow(line('rest', step.set + (ex.id.length % 3)))}</div>
+        <button class="btn ghost sm" data-act="s-ask" data-id="${ex.id}" style="margin-top:10px;color:#ddd">${F.icon('chat', 'sm')}코치에게 질문하기</button>
       </div>`;
     const foot = `<button class="btn lg block ${left <= 0 ? 'primary' : ''}" id="rest-next" data-act="s-rest-skip">${F.icon('skip')}다음 세트 시작</button>`;
     return { body, foot };
@@ -239,7 +322,7 @@ window.F = window.F || {};
           <span class="t-num-xl" style="color:#fff">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, res.next.w) + ' × ' : ''}${F.E.repsLabel(ex, res.next.r)}</span>
         </div>
         <span class="tag" style="background:${res.dir === 'up' ? '#fff' : res.dir === 'down' ? 'var(--hot)' : '#333'};border:0;color:${res.dir === 'up' || res.dir === 'down' ? '#000' : '#fff'}">${dirTxt}</span>
-        <div class="coach-row" style="margin-top:22px"><div class="coach-say"><b>${esc(F.coachName())}</b>${esc(res.msg)}</div><img src="${F.coachImg('hero')}" alt=""></div>
+        <div style="margin-top:22px">${coachRow(res.msg + (res.dir === 'up' ? ' ' + line('rateEasy', ex.id.length) : res.dir === 'down' ? ' ' + line('rateHard', ex.id.length) : ''), 'coach')}</div>
       </div>`;
       const nextStep = a.steps[a.i + 1];
       const nextLbl = nextStep && nextStep.type === 'set' ? `다음: ${esc(F.EXERCISES[nextStep.exId].name)}` : nextStep && nextStep.type === 'cardio' ? '다음: 유산소' : '다음';
@@ -249,14 +332,14 @@ window.F = window.F || {};
   };
 
   R.cardio = (a, step) => {
-    const cp = F.E.cardioPlan(a.date, a.templateId);
+    const cp = F.E.cardioPlan(a.date, a.templateId, cardioOpts(step));
     const t = timerOf(a); if (t.key !== a.i) Object.assign(t, { key: a.i, running: false, acc: 0, since: null, beeped: false });
     const ex = F.EXERCISES[cp.machine] || { id: cp.machine, name: cp.M.name, layout: '1p' };
     const c = a.cardioRes;
     if (a.cardioRating) {
       const body = `<div class="s-pad"><div class="t-label" style="margin-top:8px">CARDIO RESULT</div>
         <div class="t-num-xl" style="margin:10px 0 4px">${a.cardioMin}<span class="unit">분</span> · ~${F.num(a.cardioKcal)}<span class="unit">kcal</span></div>
-        <div class="coach-row" style="margin-top:18px"><div class="coach-say"><b>${esc(F.coachName())}</b>${esc(c.msg)} — 다음 세팅: ${esc(cardioMainText(cp.machine, c.cfg))} · ${c.cfg.min}분</div><img src="${F.coachImg('hero')}" alt=""></div></div>`;
+        <div style="margin-top:18px">${coachRow(`${c.msg} — 다음 세팅: ${cardioMainText(cp.machine, c.cfg)} · ${c.cfg.min}분`, 'coach')}</div></div>`;
       return { body, foot: `<button class="btn primary lg block" data-act="s-next">쿨다운으로 ${F.icon('arrowR')}</button>` };
     }
     if (a.cardioAsk) {
@@ -306,7 +389,8 @@ window.F = window.F || {};
           <div class="kpi on-dark"><span class="t-label">VOLUME</span><div class="t-num-l">${F.num(rec.volume)}<span class="unit">kg</span></div></div>
           <div class="kpi on-dark"><span class="t-label">BURN</span><div class="t-num-l">${F.num(rec.kcal)}<span class="unit">kcal</span></div></div>
         </div>
-        <div class="coach-row" style="margin-top:22px;text-align:left"><div class="coach-say"><b>${esc(F.coachName())}</b>${esc(rec.status === 'done' ? '완벽했어요! 30분 안에 단백질 챙기고, 오늘 밤은 7시간 이상 푹 자요. 그게 근육이 되는 시간이에요.' : '끝까지 다 못 했어도 출석한 게 제일 중요해요. 다음엔 오늘 못 한 부분부터 이어서 해요.')}</div><img src="${F.coachImg('cheer')}" alt=""></div>
+        <div class="s-cheer"><img src="${F.coachImg('cheer')}" alt=""><div><b>${esc(F.coachName())}</b><span>${esc(rec.status === 'done' ? (line('done', d.getDate()) || '완벽했어요!') + ' 30분 안에 단백질 챙기고, 오늘 밤은 7시간 이상 푹 자요.' : '끝까지 다 못 했어도 출석한 게 제일 중요해요. 다음엔 오늘 못 한 부분부터 이어서 해요.')}</span></div></div>
+        ${(() => { const nx = Object.entries(a.log || {}).filter(([, lg]) => lg.result && lg.result.dir === 'up').map(([id, lg]) => { const ex = F.EXERCISES[id]; return `<div><span class="grow">${esc(ex.name)}</span><span class="t-num" style="color:#fff">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, lg.result.next.w) + ' × ' : ''}${F.E.repsLabel(ex, lg.result.next.r)}</span></div>`; }); return nx.length ? `<div style="text-align:left;margin-top:16px"><div class="t-label">NEXT GOAL · 다음에 도전할 것</div><div class="list" style="margin-top:6px">${nx.join('')}</div></div>` : ''; })()}
         <div style="text-align:left;margin-top:8px">
           <div class="t-label">XP +${rec.xp}</div>
           <div class="list" style="margin-top:6px">${(rec.xpItems || []).map((x) => `<div><span class="grow t-small">${esc(x.note)}</span><span class="t-num" style="color:#fff">+${x.xp}</span></div>`).join('')}</div>
@@ -365,10 +449,37 @@ window.F = window.F || {};
     const reps = lg.sets.map((s) => s.r);
     const w = lg.sets.length ? lg.sets[lg.sets.length - 1].w : null;
     lg.rating = b.dataset.v;
-    lg.result = F.E.applyRating(step.exId, { w, reps }, b.dataset.v);
+    if (light(a)) lg.result = F.E.recordLight(step.exId, { w, reps }, b.dataset.v);
+    else lg.result = F.E.applyRating(step.exId, { w, reps }, b.dataset.v);
     F.save(); SS.render();
   };
   A['s-rate-skip'] = () => { A['s-next'](); };
+  A['s-cond'] = (b) => { const a = act(); (a.pre = a.pre || { cond: 'normal', sore: [], time: 'full' }).cond = b.dataset.v; F.save(); SS.render(); };
+  A['s-sore'] = (b) => { const a = act(); const o = (a.pre = a.pre || { cond: 'normal', sore: [], time: 'full' }); const v = b.dataset.v; o.sore = o.sore.includes(v) ? o.sore.filter((x) => x !== v) : o.sore.concat([v]); F.save(); SS.render(); };
+  A['s-time'] = (b) => { const a = act(); (a.pre = a.pre || { cond: 'normal', sore: [], time: 'full' }).time = b.dataset.v; F.save(); SS.render(); };
+  A['s-check-go'] = () => {
+    const a = act(); if (!a) return;
+    const o = a.pre || { cond: 'normal', sore: [], time: 'full' };
+    const nb = F.E.buildSession(a.date, a.templateId, Object.assign({}, o, { noCheck: true }));
+    a.steps = [{ type: 'check', done: true }].concat(nb.steps);
+    Object.assign(a, { cond: nb.cond, sore: nb.sore, time: nb.time, notes: nb.notes, swaps: nb.swaps, removed: nb.removed, exIds: nb.exIds, consecutive: nb.consecutive, startedAt: Date.now() });
+    a.i = 1; a.rest = null; a.cur = null;
+    F.save(); SS.render();
+  };
+  A['s-fc'] = (b) => {
+    const a = act(); const step = a.steps[a.i]; if (!step || step.type !== 'form') return;
+    const arr = a.fc[step.exId]; const i = +b.dataset.i; arr[i] = !arr[i];
+    F.vibrate(15); F.save(); SS.render();
+  };
+  A['s-form-go'] = (b) => {
+    const a = act(); const step = a.steps[a.i];
+    const arr = (a.fc || {})[step.exId] || [];
+    if (!b.dataset.skip && arr.length && !arr.every(Boolean)) { F.toast('사진 속 번호를 보며 3가지를 하나씩 눌러 확인해 주세요'); return; }
+    A['s-next']();
+  };
+  A['s-ask'] = (b) => {
+    if (UI.coach && UI.coach.openSheet) UI.coach.openSheet(b.dataset.id);
+  };
   A['s-cardio-done'] = () => {
     const a = act(); const t = timerOf(a);
     if (t.running) { t.acc += Date.now() - t.since; t.running = false; t.since = null; }
@@ -381,9 +492,10 @@ window.F = window.F || {};
   A['s-cmin'] = (b) => { const a = act(); a.cardioMin = F.clamp((a.cardioMin || 0) + +b.dataset.d, 0, 120); F.$('#cmin').textContent = a.cardioMin; F.save(); };
   A['s-cardio-rate'] = (b) => {
     const a = act(); const step = a.steps[a.i];
-    const cp = F.E.cardioPlan(a.date, a.templateId);
+    const cp = F.E.cardioPlan(a.date, a.templateId, cardioOpts(step));
     a.cardioKcal = Math.round((cp.kcal / cp.min) * a.cardioMin);
-    a.cardioRes = F.E.applyCardioRating(cp.machine, b.dataset.v, a.cardioMin, step.min);
+    a.cardioRes = light(a) ? { cfg: F.E.cardioPlan(a.date, a.templateId, { machine: step.machine }).cfg, msg: '컨디션을 낮춘 날이라 다음 유산소 강도는 그대로 둘게요' }
+      : F.E.applyCardioRating(cp.machine, b.dataset.v, a.cardioMin, step.min);
     a.cardioRating = b.dataset.v; a.cardioAsk = false;
     F.save(); SS.render();
   };
@@ -410,16 +522,15 @@ window.F = window.F || {};
   /* ---------- finish & record ---------- */
   const finish = (a, early, silent) => {
     const s = F.S;
-    const t = F.TEMPLATES[a.templateId];
     const kg = F.E.body().weight;
-    const exIds = t.ex.filter((id) => F.EXERCISES[id]);
+    const exIds = (a.exIds && a.exIds.length ? a.exIds : F.E.templateEx(a.templateId)).filter((id) => F.EXERCISES[id]);
     let exDone = 0, volume = 0, rated = 0;
     for (const id of exIds) {
       const lg = a.log[id];
       if (lg && lg.sets.length) {
         exDone++;
         if (lg.rating) rated++;
-        for (const st of lg.sets) if (st.w) volume += st.w * (F.EXERCISES[id].unit === 'kg_each' ? 2 : 1) * (st.r || 0);
+        if (!F.EXERCISES[id].assist) for (const st of lg.sets) if (st.w) volume += st.w * (F.EXERCISES[id].unit === 'kg_each' ? 2 : 1) * (st.r || 0);
       }
     }
     const endedAt = Date.now();
@@ -430,7 +541,7 @@ window.F = window.F || {};
     const full = exDone >= Math.ceil(exIds.length * 0.8) && cardioMin >= 10 && !early;
     if (exDone === 0 && cardioMin === 0) { F.S.active = null; F.save(true); if (!silent) { SS.hide(); F.toast('기록된 운동이 없어서 저장하지 않았어요'); } return; }
     const lvBefore = F.E.level().lv;
-    const rec = { date: a.date, templateId: a.templateId, status: full ? 'done' : 'partial', exDone, cardioMin, kcal, volume: Math.round(volume), startedAt: a.startedAt, endedAt, planned: !!a.planned, moved: !!a.moved, free: !!a.free, log: compactLog(a.log) };
+    const rec = { date: a.date, templateId: a.templateId, status: full ? 'done' : 'partial', exDone, cardioMin, kcal, volume: Math.round(volume), startedAt: a.startedAt, endedAt, planned: !!a.planned, moved: !!a.moved, free: !!a.free, cond: a.cond || 'normal', time: a.time || 'full', log: compactLog(a.log) };
     s.sessions[a.date] = rec;
     if (s.overrides[a.date] && s.overrides[a.date].type === 'skip') delete s.overrides[a.date];
     const items = F.E.awardSession(rec);

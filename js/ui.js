@@ -127,9 +127,11 @@ window.F = window.F || {};
     { id: 'log', mo: '기록', pc: '운동 일지', icon: 'list' },
     { id: 'body', pc: '바디 · 인바디', icon: 'body', pcOnly: true },
     { id: 'rec', pc: '출석 · 레벨', icon: 'stamp', pcOnly: true },
+    { id: 'ask', pc: '코치에게 질문', icon: 'chat', pcOnly: true },
+    { id: 'learn', pc: '운동 원리', icon: 'book', pcOnly: true },
     { id: 'set', pc: '설정', icon: 'gear', pcOnly: true },
   ];
-  const TAB_OF = { ex: 'lib', rec: 'rec', body: 'body', log: 'log' };
+  const TAB_OF = { ex: 'lib', rec: 'rec', body: 'body', log: 'log', split: 'plan', learn: 'learn', ask: 'ask' };
   UI.shell = () => {
     const root = F.$('#app');
     if (root.dataset.shell === '1') return;
@@ -147,13 +149,16 @@ window.F = window.F || {};
       <nav class="tabbar" aria-label="메인 메뉴">
         ${NAV.map((t) => `<a href="#${t.id}" data-tab="${t.id}" class="${t.pcOnly ? 'pc-only' : ''}">${F.icon(t.icon)}<span class="mo-only">${t.mo || ''}</span><span class="pc-only">${t.pc}</span></a>`).join('')}
       </nav>
+      <a class="fab-coach mo-only" href="#ask" id="fab-coach" aria-label="코치에게 질문"><img src="${F.coachImg('face')}" alt=""><span>질문</span></a>
       <div id="session" aria-live="polite"></div>`;
   };
   UI.updateTop = () => {
     const lv = F.E.level();
     const el = F.$('#who');
     const nm = UI.myName();
-    if (el) el.innerHTML = `<img src="${F.coachImg('hero')}" alt=""><span>${esc(nm || '내 기록')}</span><b>Lv.${lv.lv}</b>`;
+    if (el) el.innerHTML = `<img src="${F.coachImg('face')}" alt=""><span>${esc(nm || '내 기록')}</span><b>Lv.${lv.lv}</b>`;
+    const fab = F.$('#fab-coach img'); if (fab) fab.src = F.coachImg('face');
+    const fb = F.$('#fab-coach'); if (fb) fb.hidden = F.route().name === 'ask';
     const d = F.$('.sync-dot');
     if (d) d.className = 'sync-dot ' + (F.Sync.mode === 'cloud' ? (F.Sync.status === 'error' ? 'err' : 'on') : '');
   };
@@ -163,6 +168,7 @@ window.F = window.F || {};
     let h = location.hash.replace(/^#\/?/, '');
     try { h = decodeURIComponent(h); } catch (e) { /* keep raw */ }
     if (h.startsWith('ex-')) return { name: 'ex', rest: [h.slice(3).replace(/-/g, '_')] };
+    if (h.startsWith('learn-')) return { name: 'learn', rest: [h.slice(6)] };
     const [name, ...rest] = h.split('/'); // legacy #/ex/<id> links still work outside claude.ai
     return { name: name || 'home', rest };
   };
@@ -242,7 +248,8 @@ window.F = window.F || {};
   };
 
   /* ---------- Onboarding ---------- */
-  const ONB = { step: 0, d: null };
+  const ONB = { step: 0, d: null, intro: 0 };
+  UI.ONB = ONB;
   const onbDefaults = () => ({ trainer: 'm', name: '', sex: 'm', age: 32, height: 171, weight: 90, goalWeight: null, pace: 'normal', freq: 3, days: [1, 3, 5], gymTime: '19:30' });
 
   UI.boot = () => {
@@ -257,6 +264,8 @@ window.F = window.F || {};
   V.onboard = () => {
     const root = F.$('#app');
     root.dataset.shell = '';
+    if (ONB.replay && ONB.intro >= (F.INTRO || []).length) { ONB.replay = false; ONB.intro = 99; root.dataset.shell = ''; location.hash = '#home'; F.render(); return; }
+    if (UI.coach && F.INTRO && F.INTRO.length && (ONB.intro || 0) < F.INTRO.length) { UI.coach.renderIntro(ONB); return; }
     if (!ONB.d) { ONB.d = onbDefaults(); if (F.Sync.me && F.Sync.me.name) ONB.d.name = String(F.Sync.me.name).slice(0, 12); }
     const d = ONB.d;
     const steps = ['코치', '기본 정보', '목표', '스케줄', '시작'];
@@ -264,14 +273,16 @@ window.F = window.F || {};
       <div class="ticks" style="margin-top:14px">${steps.map((_, i) => `<i class="${i <= ONB.step ? 'on' : ''}"></i>`).join('')}</div></div>`;
     let body = '', foot = '';
     const bmi = F.E.bmi(d.weight, d.height);
-    if (ONB.step === 0) {
+    if (ONB.step === 0 && UI.coach && UI.coach.coachPick) {
+      ({ body, foot } = UI.coach.coachPick(d));
+    } else if (ONB.step === 0) {
       body = `<div class="t-label mute">WELCOME</div>
         <h1 class="t-h1" style="font-size:34px;margin:10px 0 10px">오늘부터 당신의<br>전담 PT예요.</h1>
         <p class="mute2">운동 루틴, 자세, 식단, 영양제, 인바디 분석까지 — 함께할 코치를 골라주세요. 언제든 바꿀 수 있어요.</p>
         <div class="pick-coach" style="margin-top:22px">
           ${['m', 'f'].map((g) => `<button data-act="onb-coach" data-g="${g}" class="${d.trainer === g ? 'on' : ''}" aria-pressed="${d.trainer === g}">
             <div class="pc-img"><img src="${F.img.trainer(g, 'hero')}" alt="${g === 'm' ? '남성' : '여성'} 트레이너"></div>
-            <div class="pc-t"><div class="t-h3">${esc(F.S.settings.trainerNames[g])}</div><div class="t-xs mute">${g === 'm' ? '근력·자세 교정 전문 · 32세' : '다이어트·체형 관리 전문 · 31세'}</div></div></button>`).join('')}
+            <div class="pc-t"><div class="t-h3">${esc(F.S.settings.trainerNames[g])}</div><div class="t-xs mute">${esc(((F.TRAINERS || {})[g] || {}).title || '')}</div></div></button>`).join('')}
         </div>`;
       foot = `<button class="btn primary lg block" data-act="onb-next">${esc(F.josa(F.S.settings.trainerNames[d.trainer], '과/와'))} 시작하기 ${F.icon('arrowR')}</button>`;
     } else if (ONB.step === 1) {
@@ -342,7 +353,7 @@ window.F = window.F || {};
   A['onb-goal'] = (el) => { ONB.d.goalWeight = parseFloat(el.dataset.v); V.onboard(); };
   A['onb-freq'] = (el) => { const n = +el.dataset.v; ONB.d.freq = n; ONB.d.days = F.PATTERNS[n].days.slice(); V.onboard(); };
   A['onb-day'] = (el) => { const w = +el.dataset.v; const ds = ONB.d.days; const i = ds.indexOf(w); if (i >= 0) ds.splice(i, 1); else ds.push(w); V.onboard(); };
-  A['onb-prev'] = () => { ONB.step = Math.max(0, ONB.step - 1); V.onboard(); window.scrollTo(0, 0); };
+  A['onb-prev'] = () => { if (ONB.step === 0) { ONB.intro = Math.max(0, (F.INTRO || []).length - 1); } else ONB.step = Math.max(0, ONB.step - 1); V.onboard(); window.scrollTo(0, 0); };
   A['onb-next'] = () => {
     const d = ONB.d;
     if (ONB.step === 1) {

@@ -149,7 +149,8 @@ window.F = window.F || {};
           <section class="sec">${UI.secH('COACH', '트레이너', '')}
             <div class="pick-coach">${['m', 'f'].map((g) => `<button data-act="set-coach" data-g="${g}" class="${st.trainer === g ? 'on' : ''}" aria-pressed="${st.trainer === g}">
               <div class="pc-img"><img src="${F.img.trainer(g, 'hero')}" alt=""></div>
-              <div class="pc-t"><div class="t-h3">${esc(st.trainerNames[g])}</div><div class="t-xs mute">${g === 'm' ? '남성 트레이너' : '여성 트레이너'} · 언제든 변경</div></div></button>`).join('')}</div>
+              <div class="pc-t"><div class="t-h3">${esc(st.trainerNames[g])}</div><div class="t-xs mute">${esc(((F.TRAINERS || {})[g] || {}).title || (g === 'm' ? '남성 트레이너' : '여성 트레이너'))} · 언제든 변경</div></div></button>`).join('')}</div>
+            <div class="btn-row" style="margin-top:12px"><button class="btn" data-act="intro-replay">${F.icon('info', 'sm')}서비스 소개 다시 보기</button><a class="btn" href="#split">${F.icon('split', 'sm')}분할 운동 가이드</a></div>
             <div class="grid g2" style="margin-top:12px">${['m', 'f'].map((g) => `<label class="field" style="margin:0"><span>${g === 'm' ? '남성' : '여성'} 코치 이름</span><input class="input" data-change="set-coachname" data-g="${g}" value="${esc(st.trainerNames[g])}" maxlength="10"></label>`).join('')}</div>
           </section>
 

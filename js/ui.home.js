@@ -37,7 +37,7 @@ window.F = window.F || {};
     } else if (pl) {
       const cp = F.E.cardioPlan(k, t.id);
       const mins = F.E.estimateMinutes(t.id);
-      const exs = t.ex.filter((id) => F.EXERCISES[id]);
+      const exs = F.E.templateEx(t.id);
       head = `${dateLine}<h1 class="t-title" style="margin-top:8px">${esc(t.name)}</h1>
         <p class="mute2" style="margin-top:6px"><b class="t-num">${pl.time}</b> 시작 · 약 ${mins}분 · ${exs.length}종목 + ${esc(cp.M.short)} ${cp.min}분${pl.moved ? ' · <b>대체일</b>' : ''}</p>`;
       body = `<div class="swipe" style="margin-top:16px">${exs.map((id, i) => {
@@ -49,6 +49,7 @@ window.F = window.F || {};
         }).join('')}
           <a class="bigex" href="${F.exHref(cp.machine)}">${UI.exFig(F.EXERCISES[cp.machine])}<div class="cap"><span class="t-label mute">CARDIO</span><div class="t-h2" style="margin-top:4px">${esc(cp.M.name)}</div><div class="t-num-m" style="margin-top:4px">${esc(cp.main)} · ${cp.min}분</div></div></a>
         </div>
+        <div class="howto">${F.E.doneSessions().length ? '' : '<b>첫 운동은 오리엔테이션이에요.</b> 가벼운 무게로 동작만 익혀요. '}시작하면 <b>① 컨디션 체크</b> → <b>② 운동마다 자세 포인트 3개 확인</b> → <b>③ 세트 · 휴식 안내</b> 순서로 옆에서 챙겨 드려요. 컨디션이 나쁘면 가볍게, 시간이 없으면 30분 버전으로 바꿀 수 있어요.</div>
         <div class="sticky-cta"><button class="btn primary xl block" data-act="start-session" data-date="${k}">${F.icon('play')}운동 시작</button></div>
         <div style="padding:8px var(--pad) 0;text-align:center"><button class="t-small link" data-act="open-resched" data-date="${k}">약속이 생겼어요 — 대체일 잡기</button></div>`;
     } else {
@@ -107,7 +108,7 @@ window.F = window.F || {};
       today = `<div class="row between" style="align-items:flex-end"><h2 class="t-title" style="font-size:38px">${esc(t.name)}</h2><span class="t-num-m">${pl.time}</span></div>
         <p class="mute2 t-small" style="margin:4px 0 10px">${esc(t.focus)} · 약 ${F.E.estimateMinutes(t.id)}분 · ${esc(ph.name)}</p>
         <div class="cell-scroll"><table class="tbl"><thead><tr><th>#</th><th>운동</th><th>무게</th><th>횟수</th><th>세트</th><th>휴식</th></tr></thead><tbody>
-          ${t.ex.filter((id) => F.EXERCISES[id]).map((id, i) => { const pr = F.E.prescription(id); const ex = pr.ex; return `<tr><td>${F.pad(i + 1)}</td><td class="k"><a class="link" href="${F.exHref(id)}">${esc(ex.name)}</a></td><td>${F.E.isLoaded(ex) ? F.E.loadLabel(ex, pr.w) : '맨몸'}</td><td>${F.E.repsLabel(ex, pr.r)}</td><td>${pr.sets}</td><td>${pr.rest}s</td></tr>`; }).join('')}
+          ${F.E.templateEx(t.id).map((id, i) => { const pr = F.E.prescription(id); const ex = pr.ex; return `<tr><td>${F.pad(i + 1)}</td><td class="k"><a class="link" href="${F.exHref(id)}">${esc(ex.name)}</a></td><td>${F.E.isLoaded(ex) ? F.E.loadLabel(ex, pr.w) : '맨몸'}</td><td>${F.E.repsLabel(ex, pr.r)}</td><td>${pr.sets}</td><td>${pr.rest}s</td></tr>`; }).join('')}
           <tr><td>${F.icon('heart', 'sm')}</td><td class="k">${esc(cp.M.short)}</td><td colspan="3">${esc(cp.main)}</td><td>${cp.min}분</td></tr>
         </tbody></table></div>
         <div class="btn-row" style="margin-top:12px;flex:none"><button class="btn primary" data-act="start-session" data-date="${k}">${F.icon('play', 'sm')}운동 시작</button><button class="btn" data-act="open-resched" data-date="${k}">약속 생김</button></div>`;

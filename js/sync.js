@@ -28,6 +28,7 @@ window.F = window.F || {};
     for (const st of Object.values(S.ex || {})) if (st && st.hist && st.hist.length > 30) st.hist = st.hist.slice(-30);
     for (const st of Object.values(S.cardio || {})) if (st && st.hist && st.hist.length > 30) st.hist = st.hist.slice(-30);
     keepDays(S.meals, 120); keepDays(S.supp, 120);
+    if (Array.isArray(S.chat) && S.chat.length > 40) S.chat = S.chat.slice(-40);
     if (Array.isArray(S.xp) && S.xp.length > 80) S.xp = S.xp.slice(-80);
     const cut = F.addDays(F.today(), -200);
     for (const k of Object.keys(S.xpKeys || {})) { const m = k.match(/\d{4}-\d{2}-\d{2}/); if (m && m[0] < cut) delete S.xpKeys[k]; }

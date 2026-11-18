@@ -253,7 +253,80 @@ window.F = window.F || {};
     return Math.max(1, Math.floor(F.diffDays(F.mondayOf(p.startDate), F.mondayOf(k || F.today())) / 7) + 1);
   };
 
-  E.rotation = () => F.ROTATION[S().settings.freq] || F.ROTATION[3];
+  /* ---------- splits: 무분할(full) · 2분할(ul) · 3분할(ppl) ---------- */
+  E.splitId = () => {
+    const s = S();
+    const sp = s.settings.split || 'auto';
+    if (sp !== 'auto' && F.SPLIT_ROT[sp]) return sp;
+    return s.settings.freq >= 4 ? 'ul' : 'full';
+  };
+  E.recommendSplit = () => {
+    const fq = S().settings.freq;
+    const ph = E.phase();
+    if (fq >= 4) return { id: 'ul', why: `주 ${fq}회라면 상체·하체를 나눠야 같은 근육이 이틀 연속 일하지 않고, 근육마다 주 2번씩 자극돼요.` };
+    if (ph.id >= 3 && fq === 3) return { id: 'full', alt: 'ppl', why: '주 3회 전신은 근육마다 주 3번 자극이라 여전히 가장 효율적이에요. 운동 시간이 길어지면 3분할(밀기·당기기·하체)로 바꿔도 좋아요.' };
+    return { id: 'full', why: `주 ${fq}회 초보자는 전신 운동이 근육마다 주 ${fq}번 자극을 줘서 가장 빨리 늘어요. 동작을 자주 반복하니 자세도 빨리 익어요.` };
+  };
+  E.rotation = () => {
+    const s = S();
+    const sp = E.splitId();
+    const fq = s.settings.freq;
+    if (sp === 'full' && fq <= 2) return ['FA', 'FB'];
+    if (sp === 'ul' && fq >= 5) return ['UA', 'LA', 'CC', 'UB', 'LB'];
+    return F.SPLIT_ROT[sp] || F.ROTATION[fq] || F.ROTATION[3];
+  };
+
+  /** Exercises of a template after this person's swaps (level-ups, sore-free choices, preferences). */
+  E.templateEx = (tid) => {
+    const t = F.TEMPLATES[tid]; if (!t) return [];
+    const sw = (S().settings.swaps || {})[tid] || {};
+    const out = [];
+    for (const id of t.ex) { const x = sw[id] || id; if (F.EXERCISES[x] && !out.includes(x)) out.push(x); }
+    return out;
+  };
+  E.groupOf = (id) => (F.GROUPS || []).find((g) => g.ladder.includes(id) || g.side.includes(id)) || null;
+  E.swapOptions = (id) => { const g = E.groupOf(id); return g ? g.ladder.concat(g.side).filter((x) => F.EXERCISES[x]) : []; };
+  /** Show `to` wherever `from` is shown in template tid (all = every template, used for level-ups). */
+  E.swapEx = (tid, from, to, all) => {
+    const s = S();
+    s.settings.swaps = s.settings.swaps || {};
+    for (const t of all ? Object.keys(F.TEMPLATES) : [tid]) {
+      const T = F.TEMPLATES[t]; if (!T) continue;
+      const sw = s.settings.swaps[t] || {};
+      for (const orig of T.ex) if ((sw[orig] || orig) === from) { if (to === orig) delete sw[orig]; else sw[orig] = to; }
+      if (Object.keys(sw).length) s.settings.swaps[t] = sw; else delete s.settings.swaps[t];
+    }
+    F.save();
+  };
+  E.resetSwaps = (tid) => { const s = S(); if (s.settings.swaps) delete s.settings.swaps[tid]; F.save(); };
+  /** Beginner → intermediate: exercises handled well twice in a row can move one step up their ladder. */
+  E.levelUps = () => {
+    const ph = E.phase();
+    const seen = new Set();
+    const out = [];
+    for (const tid of E.rotation()) for (const id of E.templateEx(tid)) {
+      if (seen.has(id)) continue; seen.add(id);
+      const g = E.groupOf(id); if (!g) continue;
+      const i = g.ladder.indexOf(id); if (i < 0 || i >= g.ladder.length - 1) continue;
+      const next = g.ladder[i + 1]; const nx = F.EXERCISES[next];
+      if (!nx || (nx.level || 1) > ph.id + 1) continue;
+      const st = S().ex[id]; if (!st || !st.hist) continue;
+      const ses = st.hist.filter((h) => h.src === 'session').slice(-2);
+      if (ses.length < 2 || ses.some((h) => h.rating === 'hard')) continue;
+      out.push({ from: id, to: next, group: g.label,
+        why: `${F.josa(F.EXERCISES[id].name, '을/를')} 최근 2번 안정적으로 해냈어요. 같은 근육을 쓰는 다음 단계 ${F.josa(nx.name, '으로/로')} 넘어갈 때예요.` });
+    }
+    return out;
+  };
+  /** Choose which routine a planned day gets (null = back to the automatic order). */
+  E.setDayTemplate = (k, tid) => {
+    const s = S();
+    const ov = s.overrides[k];
+    if (!tid) { if (ov) { delete ov.tpl; if (ov.type === 'tpl') delete s.overrides[k]; } }
+    else if (ov) ov.tpl = tid;
+    else s.overrides[k] = { type: 'tpl', tpl: tid };
+    F.save(true);
+  };
 
   /* Is date k a planned gym day (pattern or override)? returns override info */
   E.planFor = (k) => {
@@ -272,6 +345,8 @@ window.F = window.F || {};
     const s = S();
     const ses = s.sessions[k];
     if (ses && ses.templateId && (ses.status === 'done' || ses.status === 'partial')) return ses.templateId;
+    const own = s.overrides[k];
+    if (own && own.tpl && F.TEMPLATES[own.tpl]) return own.tpl;
     const rot = E.rotation();
     const done = E.doneSessions().filter((x) => x.kind !== 'home' && F.TEMPLATES[x.templateId]);
     let idx = 0;
@@ -280,17 +355,20 @@ window.F = window.F || {};
       const li = rot.indexOf(lastT);
       idx = li >= 0 ? li + 1 : done.length;
     }
-    // count planned not-done dates between today and k (exclusive) to project forward
+    // walk the planned, not-done dates between today and k: each takes the next routine,
+    // and a day with a chosen routine restarts the cycle right after it
     const today = F.today();
     let cursor = today < k ? today : k;
-    let steps = 0;
     for (let i = 0; i < 60 && cursor < k; i++) {
       const pl = E.planFor(cursor);
       const sx = s.sessions[cursor];
-      if (pl && !(sx && (sx.status === 'done' || sx.status === 'partial'))) steps++;
+      if (pl && !(sx && (sx.status === 'done' || sx.status === 'partial'))) {
+        const o = s.overrides[cursor];
+        idx = o && o.tpl && rot.includes(o.tpl) ? rot.indexOf(o.tpl) + 1 : idx + 1;
+      }
       cursor = F.addDays(cursor, 1);
     }
-    return rot[(idx + steps) % rot.length];
+    return rot[idx % rot.length];
   };
 
   /* Week view */
@@ -416,7 +494,8 @@ window.F = window.F || {};
   /* =========================================================
      LOADS & PROGRESSION
      ========================================================= */
-  const MAIN = ['leg_press', 'goblet_squat', 'deadlift', 'hip_thrust', 'chest_press', 'db_bench', 'lat_pulldown', 'seated_row'];
+  const MAIN = ['leg_press', 'goblet_squat', 'deadlift', 'hip_thrust', 'chest_press', 'db_bench', 'lat_pulldown', 'seated_row', 'back_squat', 'bench_press', 'barbell_row', 'ohp', 'assisted_pullup'];
+  E.MAIN = MAIN;
   const DB_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32.5, 35, 37.5, 40, 42.5, 45, 47.5, 50];
 
   E.roundLoad = (ex, x) => {
@@ -491,6 +570,7 @@ window.F = window.F || {};
   E.loadLabel = (ex, w) => {
     if (!E.isLoaded(ex) || w == null) return ex.unit === 'sec' ? '맨몸' : '맨몸';
     if (ex.unit === 'kg_each') return `${F.num1(w)}kg ×2`;
+    if (ex.assist) return `보조 ${F.num1(w)}kg`;
     return `${F.num1(w)}kg`;
   };
   E.repsLabel = (ex, r) => (ex.unit === 'sec' ? `${r}초` : ex.repsUnit && ex.repsUnit.includes('한쪽') ? `${r}회(한쪽)` : `${r}회`);
@@ -511,7 +591,13 @@ window.F = window.F || {};
     const rir = RIR[rating];
     const explain = [];
     let nw = st.w, nr = lo;
-    if (E.isLoaded(ex)) {
+    if (ex.assist) {
+      // help weight: easy → less help, hard → more help
+      nw = rating === 'easy' ? E.stepLoad(ex, w, -2) : rating === 'good' ? w : E.stepLoad(ex, w, +1);
+      nr = lo;
+      explain.push(`보조 ${F.num1(w)}kg로 ${r}회를 '${E.RATING[rating].label}'로 평가했어요`);
+      explain.push(rating === 'easy' ? `보조를 ${F.num1(w - nw)}kg 줄여요 — 보조가 적을수록 내 힘으로 더 많이 당겨요` : rating === 'good' ? '지금 보조 무게가 딱 맞아요 — 그대로 진행해요' : `보조를 ${F.num1(nw - w)}kg 늘려 자세부터 익혀요`);
+    } else if (E.isLoaded(ex)) {
       const e1 = w * (1 + (r + rir) / 30);
       nw = E.roundLoad(ex, e1 / (1 + (lo + ph.rir) / 30));
       explain.push(`${E.loadLabel(ex, w)} × ${r}회를 '${E.RATING[rating].label}'(여유 약 ${rir}회)로 평가 → 추정 최대근력(1RM) ${F.num1(ex.unit === 'kg_each' ? e1 : e1)}kg${ex.unit === 'kg_each' ? ' (한 손)' : ''}`);
@@ -532,6 +618,16 @@ window.F = window.F || {};
     return { w: nw, r: nr, sets: E.setsFor(exId, ph), explain };
   };
 
+  /** A day the member chose to go lighter: keep the history, leave the prescription as it was. */
+  E.recordLight = (exId, perf, rating) => {
+    const st = E.exState(exId);
+    const reps = perf.reps.filter((x) => x != null);
+    st.hist.push({ d: F.today(), w: perf.w != null ? perf.w : st.w, r: reps.length ? Math.round(reps.reduce((a, b) => a + b, 0) / reps.length) : st.r, reps, rating, src: 'light' });
+    if (st.hist.length > 60) st.hist = st.hist.slice(-60);
+    F.save();
+    return { prev: { w: st.w, r: st.r }, next: { w: st.w, r: st.r }, dir: 'same', msg: '컨디션을 낮춘 날이라 다음 무게는 원래대로 둘게요. 오늘은 나온 것만으로 충분해요.' };
+  };
+
   /** After the last set of an exercise in a session. perf = {w, reps:[..]} */
   E.applyRating = (exId, perf, rating) => {
     const ex = F.EXERCISES[exId];
@@ -547,6 +643,17 @@ window.F = window.F || {};
     let msg = '', dir = 'same';
     const isBW = !E.isLoaded(ex);
     const step = ex.unit === 'sec' ? 5 : 1;
+    if (ex.assist) {
+      // assisted machine: less help = harder
+      if (rating === 'easy') { st.hard = 0; w = E.stepLoad(ex, w, -1); msg = `할만했다면 보조를 줄일 때예요! 다음엔 보조 ${F.num1(w)}kg × ${r}회.`; dir = 'up'; }
+      else if (rating === 'good') { st.hard = 0; if (allHit) { r += 1; if (r > hi) { w = E.stepLoad(ex, w, -1); r = lo; msg = `최대 반복 달성! 다음엔 보조를 ${F.num1(w)}kg로 줄여요.`; } else msg = `딱 좋아요. 같은 보조로 ${r}회에 도전해요.`; dir = 'up'; } else msg = `적정 강도예요. 모든 세트 ${target}회가 다음 목표예요.`; }
+      else { w = E.stepLoad(ex, w, +1); r = lo; st.hard = 0; dir = 'down'; msg = `오늘은 버거웠어요. 다음엔 보조를 ${F.num1(w)}kg로 늘려 자세부터 다져요.`; }
+      st.w = w; st.r = r;
+      st.hist.push({ d: F.today(), w: perf.w != null ? perf.w : prev.w, r: reps.length ? Math.round(reps.reduce((a, b) => a + b, 0) / reps.length) : target, reps, rating, src: 'session' });
+      if (st.hist.length > 60) st.hist = st.hist.slice(-60);
+      F.save();
+      return { prev, next: { w, r }, msg, dir };
+    }
     if (rating === 'easy') {
       st.hard = 0;
       if (isBW) { r = Math.min(hi + (ex.unit === 'sec' ? 30 : 6), r + step * 2); msg = `여유가 있었네요! 다음엔 ${E.repsLabel(ex, r)}로 늘려요.`; dir = 'up'; }
@@ -607,20 +714,21 @@ window.F = window.F || {};
     return Math.round(((cfg.met * 3.5 * kg) / 200) * min);
   };
 
-  E.cardioPlan = (k, tid) => {
+  E.cardioPlan = (k, tid, o = {}) => {
     const s = S();
     const ph = E.phase();
-    let machine = s.settings.cardio || 'treadmill';
+    let machine = o.machine || s.settings.cardio || 'treadmill';
     const M = F.CARDIO[machine];
     if (M.minPhase && ph.id < M.minPhase) machine = 'treadmill';
     const st = E.cardioState(machine);
-    const L = F.clamp(Math.floor(st.level), 1, ph.cardioMax);
+    const L = F.clamp(Math.floor(st.level) + (o.dl || 0), 1, ph.cardioMax);
     const cfg = F.CARDIO[machine].levels[L];
     const t = F.TEMPLATES[tid] || {};
     let min = cfg.min;
     if (t.longCardio) min += 15;
     if (s.settings.freq === 2) min += 10;
     min = Math.min(min, 60);
+    if (o.min != null) min = o.min;
     const b = E.body();
     const hr = E.hrZone(b.age || 30);
     const kcal = E.cardioKcal(machine, cfg, min, b.weight);
@@ -661,39 +769,99 @@ window.F = window.F || {};
   /* =========================================================
      SESSION BUILDER
      ========================================================= */
-  E.buildSession = (k, tid) => {
-    const t = F.TEMPLATES[tid];
-    const steps = [];
-    steps.push({ type: 'warmup', exId: 'warmup', dur: 6 * 60 });
-    const consecutive = (() => { // reduce volume when a full-body day follows another session
-      const y = F.addDays(k, -1);
-      const ys = S().sessions[y];
-      return t.region === 'full' && ys && (ys.status === 'done' || ys.status === 'partial');
+  /* Today's condition → what a trainer would change (sets, load, exercise count, cardio). */
+  const COND = {
+    great: { w: 1, main: +1, acc: 0, keep: 99, cardio: +5, dl: 0 },
+    normal: { w: 1, main: 0, acc: 0, keep: 99, cardio: 0, dl: 0 },
+    tired: { w: 0.9, main: 0, acc: -1, keep: 99, cardio: -5, dl: -1 },
+    bad: { w: 0.8, main: -9, acc: -9, keep: 3, cardio: null, dl: -2 },
+  };
+  E.COND = COND;
+  const lighter = (ex, w, f) => {
+    if (w == null || f >= 1) return w;
+    if (ex.assist) return E.stepLoad(ex, w, f <= 0.8 ? +2 : +1); // more help = lighter
+    let nw = E.roundLoad(ex, w * f);
+    if (nw >= w) nw = E.stepLoad(ex, w, -1);
+    return Math.min(nw, w);
+  };
+  /** The day's plan after condition, sore areas and time. o = {cond, sore:[], time:'full'|'short'} */
+  E.sessionPlan = (k, tid, o = {}) => {
+    const cond = COND[o.cond] ? o.cond : 'normal';
+    const fx = COND[cond];
+    const sore = o.sore || [];
+    const short = o.time === 'short';
+    const t = F.TEMPLATES[tid] || {};
+    const notes = [];
+    const swaps = [];
+    const removed = [];
+    const consecutive = (() => { // a full-body day right after another session gets one set less
+      const ys = S().sessions[F.addDays(k, -1)];
+      return t.region === 'full' && !!ys && (ys.status === 'done' || ys.status === 'partial');
     })();
-    const exList = t.ex.filter((id) => F.EXERCISES[id]);
-    for (const exId of exList) {
-      const pr = E.prescription(exId);
-      const sets = Math.max(1, pr.sets - (consecutive ? 1 : 0));
-      for (let i = 1; i <= sets; i++) steps.push({ type: 'set', exId, set: i, of: sets, w: pr.w, r: pr.r, rest: pr.rest });
-      steps.push({ type: 'rate', exId });
+    // sore areas: swap to a safe exercise for the same day, or leave it out
+    let list = [];
+    for (const id of E.templateEx(tid)) {
+      let x = id;
+      for (const a of sore) {
+        const m = (F.SORE_SWAP || {})[a] || {};
+        if (Object.prototype.hasOwnProperty.call(m, x)) { const to = m[x]; if (to) swaps.push({ from: x, to, area: a }); else removed.push({ id: x, area: a }); x = to; if (!x) break; }
+      }
+      if (x && F.EXERCISES[x] && !list.includes(x)) list.push(x);
     }
-    const cp = E.cardioPlan(k, tid);
-    steps.push({ type: 'cardio', machine: cp.machine, min: cp.min });
-    steps.push({ type: 'cooldown', exId: 'cooldown', dur: 5 * 60 });
-    steps.push({ type: 'done' });
-    return { date: k, templateId: tid, steps, i: 0, log: {}, startedAt: Date.now(), consecutive };
+    const keep = Math.min(fx.keep, short ? (cond === 'bad' ? 3 : 4) : 99);
+    if (list.length > keep) { for (const id of list.slice(keep)) removed.push({ id, why: short ? 'time' : 'cond' }); list = list.slice(0, keep); }
+    const items = list.map((id, i) => {
+      const pr = E.prescription(id);
+      const ex = pr.ex;
+      const isMain = i < 2;
+      let sets = pr.sets - (consecutive ? 1 : 0);
+      if (cond === 'bad') sets = Math.min(2, sets);
+      else sets += isMain ? fx.main : fx.acc;
+      if (short) sets = Math.min(2, sets);
+      sets = F.clamp(sets, 1, 5);
+      const w = E.isLoaded(ex) ? lighter(ex, pr.w, fx.w) : pr.w;
+      return { exId: id, w, r: pr.r, sets, rest: short ? Math.max(45, pr.rest - 15) : pr.rest, base: { w: pr.w, sets: pr.sets } };
+    });
+    let machine = null;
+    if (sore.includes('knee')) machine = 'bike';
+    const cp0 = E.cardioPlan(k, tid, { machine });
+    let cmin = cp0.min;
+    if (cond === 'bad') cmin = 15;
+    else cmin += fx.cardio;
+    if (short) cmin = Math.min(cmin, 10);
+    cmin = F.clamp(cmin, 10, 60);
+    if (cond === 'great') notes.push('컨디션 최고 — 메인 2종목 1세트씩 추가, 유산소 +5분');
+    if (cond === 'tired') notes.push('피곤한 날 — 무게 10%↓, 보조 운동 1세트↓, 유산소 -5분 · 가볍게');
+    if (cond === 'bad') notes.push('컨디션 나쁜 날 — 무게 20%↓, 3종목 · 2세트만, 가벼운 유산소 15분');
+    if (short) notes.push('짧게 — 4종목 이내 · 2세트 · 유산소 10분');
+    if (consecutive) notes.push('어제도 운동해서 세트를 1개씩 줄였어요');
+    return { items, cardio: { machine: machine || cp0.machine, min: cmin, dl: fx.dl || 0 }, notes, swaps, removed, consecutive, cond, sore, time: short ? 'short' : 'full' };
   };
 
-  E.estimateMinutes = (tid) => {
-    const t = F.TEMPLATES[tid]; if (!t) return 0;
-    const ph = E.phase();
-    let sec = 6 * 60 + 5 * 60;
-    for (const id of t.ex) {
-      if (!F.EXERCISES[id]) continue;
-      const sets = E.setsFor(id, ph);
-      sec += sets * (45 + E.restFor(id, ph)) + 60;
+  E.buildSession = (k, tid, o = {}) => {
+    const plan = E.sessionPlan(k, tid, o);
+    const short = plan.time === 'short';
+    const steps = [];
+    if (!o.noCheck) steps.push({ type: 'check' });
+    steps.push({ type: 'warmup', exId: 'warmup', dur: (short ? 4 : 6) * 60 });
+    for (const it of plan.items) {
+      steps.push({ type: 'form', exId: it.exId });
+      for (let i = 1; i <= it.sets; i++) steps.push({ type: 'set', exId: it.exId, set: i, of: it.sets, w: it.w, r: it.r, rest: it.rest });
+      steps.push({ type: 'rate', exId: it.exId });
     }
-    sec += E.cardioPlan(F.today(), tid).min * 60;
+    steps.push({ type: 'cardio', machine: plan.cardio.machine, min: plan.cardio.min, dl: plan.cardio.dl });
+    steps.push({ type: 'cooldown', exId: 'cooldown', dur: (short ? 3 : 5) * 60 });
+    steps.push({ type: 'done' });
+    return { date: k, templateId: tid, steps, i: 0, log: {}, startedAt: Date.now(), consecutive: plan.consecutive,
+      cond: plan.cond, sore: plan.sore, time: plan.time, notes: plan.notes, swaps: plan.swaps, removed: plan.removed, exIds: plan.items.map((x) => x.exId) };
+  };
+
+  E.estimateMinutes = (tid, o) => {
+    if (!F.TEMPLATES[tid]) return 0;
+    const plan = E.sessionPlan(F.today(), tid, o || {});
+    let sec = (plan.time === 'short' ? 7 : 11) * 60;
+    for (const it of plan.items) sec += it.sets * (45 + it.rest) + 90;
+    sec += plan.cardio.min * 60;
     return Math.round(sec / 60 / 5) * 5;
   };
 

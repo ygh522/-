@@ -70,9 +70,9 @@ window.F = window.F || {};
       freq: 3, days: [1, 3, 5], gymTime: '19:30',
       alarmOn: true, alarmLead: 30,
       cardio: 'treadmill', pace: 'normal', kcalAdj: 0,
-      theme: 'system', sound: true, figure: null,
+      theme: 'system', sound: true, figure: null, split: 'auto', swaps: {},
     },
-    ex: {}, cardio: {}, sessions: {}, overrides: {}, inbody: [], weights: [],
+    ex: {}, cardio: {}, sessions: {}, overrides: {}, inbody: [], weights: [], chat: [],
     meals: {}, supp: {}, xp: [], xpTotal: 0, xpKeys: {}, badges: {}, active: null,
     alarmFired: {}, updatedAt: 0,
   });
@@ -265,6 +265,11 @@ window.F = window.F || {};
     water: '<path d="M6 3h12l-2 18H8zM6.5 8h11"/>',
     lock: '<path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"/>',
     flag: '<path d="M5 22V3h12l-2 4 2 4H5"/>',
+    chat: '<path d="M3 4h18v13H8l-5 4z"/><path d="M7 9h10M7 13h6"/>',
+    send: '<path d="M3 11l18-8-8 18-2-8z"/>',
+    book: '<path d="M4 4h7v16H4zM13 4h7v16h-7z"/>',
+    split: '<path d="M3 4h18v16H3zM9 4v16M15 4v16"/>',
+    user: '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a7 7 0 0 1 16 0v1"/>',
   };
   F.icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[name] || IC.info}</svg>`;
 
