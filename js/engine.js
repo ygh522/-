@@ -148,6 +148,8 @@ window.F = window.F || {};
     return { meal, items, ...tot };
   };
 
+  /* Meal times follow the gym time and rule 3 of the easy diet ("finish eating by 8 pm";
+     the one exception is the shake after a late workout). */
   E.mealTimes = (k) => {
     const gym = E.planFor(k);
     const gt = F.timeToMin(S().settings.gymTime);
@@ -155,18 +157,24 @@ window.F = window.F || {};
     const note = {};
     if (gym) {
       if (gt >= 17 * 60) {
-        t.snack = gt + 85; note.snack = '운동 직후 — 근육 회복 골든타임';
-        t.dinner = gt + 110; note.dinner = '운동 후 저녁 — 단백질 먼저, 늦으면 밥 양 ↓';
-        t.lunch = 12 * 60 + 30; note.lunch = '운동 4~6시간 전 — 탄수화물로 에너지 저장';
-        t.pre = gt - 90;
+        t.lunch = 12 * 60 + 30; note.lunch = '밥으로 운동할 에너지 채우기';
+        if (gt + 100 <= 20 * 60) {
+          // early evening: shake before, dinner right after the workout, done before 8 pm
+          t.snack = gt - 90; note.snack = '운동 1시간 30분 전 — 단백질 채우기';
+          t.dinner = gt + 100; note.dinner = '운동 후 저녁 — 8시 전에 끝내요';
+        } else {
+          // late evening (e.g. 19:30): dinner before the gym, only the shake after it
+          t.dinner = Math.max(17 * 60 + 30, gt - 90); note.dinner = '운동 1시간 30분 전 — 평소 양으로 먹고 가요';
+          t.snack = gt + 80; note.snack = '운동 직후 — 늦게 운동한 날의 예외 1잔';
+        }
       } else if (gt <= 10 * 60) {
-        t.breakfast = gt + 90; note.breakfast = '운동 후 아침 — 단백질 + 탄수화물';
-        t.snack = gt + 75; note.snack = '운동 직후 — 회복';
         t.pre = gt - 45;
+        t.breakfast = gt + 90; note.breakfast = '운동 후 아침 — 단백질 + 탄수화물';
+        note.snack = '오후 간식 — 단백질 채우기';
       } else {
-        t.lunch = gt + 100; note.lunch = '운동 후 점심 — 회복 식사';
-        t.snack = gt + 80; note.snack = '운동 직후 — 회복';
         t.pre = gt - 60;
+        t.lunch = gt + 100; note.lunch = '운동 후 점심 — 회복 식사';
+        t.snack = Math.max(16 * 60, gt + 240); note.snack = '오후 간식 — 단백질 채우기';
       }
     }
     return { t, note };
@@ -187,6 +195,40 @@ window.F = window.F || {};
     const rec = S().meals[k] || {};
     const eaten = slots.filter((s) => rec.done && rec.done[s.slot]).reduce((a, s) => ({ kcal: a.kcal + s.kcal, p: a.p + s.p }), { kcal: 0, p: 0 });
     return { k, tg, slots, tot, eaten, pre: t.pre != null ? F.minToTime(t.pre) : null, rec };
+  };
+
+  /* =========================================================
+     EASY DIET (F.DIET): pick a portion size from the calorie target
+     ========================================================= */
+  E.dietSize = (kcal) => (kcal < 1700 ? 'S' : kcal < 2100 ? 'M' : 'L');
+  E.DIET_SLOTS = ['breakfast', 'lunch', 'snack', 'dinner'];
+  E.dietPick = (k, slot, gym) => {
+    const D = F.DIET; if (!D) return null;
+    const rec = S().meals[k];
+    if (rec && rec.pick && rec.pick[slot] && D.meals[rec.pick[slot]]) return rec.pick[slot];
+    const ids = D.slots[slot] || [];
+    if (!ids.length) return null;
+    if (slot === 'snack') return gym ? (ids.find((x) => x.includes('shake')) || ids[0]) : (ids.find((x) => !x.includes('shake')) || ids[0]);
+    return ids[(dayIndex(k) + (slot === 'lunch' ? 1 : slot === 'dinner' ? 2 : 0)) % ids.length];
+  };
+  E.dietDay = (k) => {
+    k = k || F.today();
+    const D = F.DIET;
+    const tg = E.targets(k);
+    const size = E.dietSize(tg.kcal);
+    const { t, note } = E.mealTimes(k);
+    const rec = S().meals[k] || {};
+    const slots = E.DIET_SLOTS.map((slot) => {
+      const id = E.dietPick(k, slot, tg.gym);
+      const m = id && D ? D.meals[id] : null;
+      if (!m) return null;
+      const por = m.size[size] || m.size.M;
+      return { slot, id, m, por, size, time: F.minToTime(t[slot]), note: note[slot] || '', ate: !!(rec.ate && rec.ate[slot]) };
+    }).filter(Boolean).sort((a, b) => (a.time < b.time ? -1 : 1));
+    const tot = slots.reduce((a, x) => ({ kcal: a.kcal + x.por.kcal, p: a.p + x.por.p }), { kcal: 0, p: 0 });
+    const eaten = slots.filter((x) => x.ate).reduce((a, x) => ({ kcal: a.kcal + x.por.kcal, p: a.p + x.por.p }), { kcal: 0, p: 0 });
+    const checks = rec.checks || {};
+    return { k, tg, size, slots, tot, eaten, checks, water: rec.water || 0, pre: t.pre != null ? F.minToTime(t.pre) : null };
   };
 
   /* =========================================================
@@ -658,7 +700,7 @@ window.F = window.F || {};
   /* =========================================================
      XP · LEVELS · BADGES
      ========================================================= */
-  E.xpTotal = () => (S().xp || []).reduce((a, x) => a + x.xp, 0);
+  E.xpTotal = () => { const s = S(); return s.xpTotal || (s.xp || []).reduce((a, x) => a + x.xp, 0); };
   E.lvThreshold = (n) => (150 * n * (n - 1)) / 2;
   E.level = (xp) => {
     xp = xp == null ? E.xpTotal() : xp;
@@ -674,7 +716,10 @@ window.F = window.F || {};
     const s = S();
     if (key && s.xpKeys[key]) return 0;
     if (key) s.xpKeys[key] = 1;
+    if (!s.xpTotal) s.xpTotal = (s.xp || []).reduce((a, x) => a + x.xp, 0);
+    s.xpTotal += xp;
     s.xp.push({ d: d || F.today(), k: key || 'misc', xp, note });
+    if (s.xp.length > 80) s.xp = s.xp.slice(-80);
     F.save();
     return xp;
   };
@@ -719,7 +764,7 @@ window.F = window.F || {};
     if (st >= 4) give('streak4');
     if (st >= 8) give('streak8');
     if (Object.values(s.sessions).some((x) => x && x.moved && (x.status === 'done' || x.status === 'partial'))) give('comeback');
-    const mealDays = Object.values(s.meals).filter((r) => r && r.done && Object.values(r.done).filter(Boolean).length >= 3).length;
+    const mealDays = Object.values(s.meals).filter((r) => r && ((r.checks && Object.values(r.checks).filter(Boolean).length >= 4) || (r.done && Object.values(r.done).filter(Boolean).length >= 3))).length;
     if (mealDays >= 7) give('meal7');
     if (earned.length) F.save();
     return earned;

@@ -126,7 +126,7 @@ window.F = window.F || {};
       k = F.addDays(k, 1);
     }
     lines.push('END:VCALENDAR');
-    F.download(`mypt-schedule-${F.today()}.ics`, lines.join('\r\n'), 'text/calendar;charset=utf-8');
+    F.Sync.download(`mypt-schedule-${F.today()}.ics`, lines.join('\r\n'), 'text/calendar;charset=utf-8');
     F.toast(`${n}개의 운동 일정을 캘린더 파일로 내보냈어요`);
     return n;
   };

@@ -58,10 +58,11 @@ window.F = window.F || {};
   F.clamp = (n, a, b) => Math.min(b, Math.max(a, n));
   F.uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-  /* ---------- State (localStorage) ---------- */
-  const KEY = 'mypt.state.v1';
+  /* ---------- State (local cache per profile; cloud sync lives in sync.js) ---------- */
+  const V1KEY = 'mypt.state.v1';
+  const PKEY = 'mypt.profiles';
   F.defaultState = () => ({
-    v: 1,
+    v: 2,
     profile: null,          // set by onboarding
     settings: {
       trainer: 'm',
@@ -69,47 +70,62 @@ window.F = window.F || {};
       freq: 3, days: [1, 3, 5], gymTime: '19:30',
       alarmOn: true, alarmLead: 30,
       cardio: 'treadmill', pace: 'normal', kcalAdj: 0,
-      theme: 'light', sound: true,
+      theme: 'system', sound: true, figure: null,
     },
-    ex: {},                 // per-exercise progression
-    cardio: {},             // per-machine level
-    sessions: {},           // dateKey -> session record
-    overrides: {},          // dateKey -> {type:'skip'|'add', from|to, reason}
-    inbody: [],             // InBody records
-    weights: [],            // quick weight logs {d, w}
-    meals: {},              // dateKey -> {done:{slot:true}, pick:{slot:mealId}, water:n}
-    supp: {},               // dateKey -> {suppId:true}
-    xp: [],                 // [{d, k, xp, note}]
-    xpKeys: {},             // idempotency keys
-    badges: {},             // id -> dateKey
-    active: null,           // in-progress session
-    alarmFired: {},         // dateKey|trigger -> true
+    ex: {}, cardio: {}, sessions: {}, overrides: {}, inbody: [], weights: [],
+    meals: {}, supp: {}, xp: [], xpTotal: 0, xpKeys: {}, badges: {}, active: null,
+    alarmFired: {}, updatedAt: 0,
   });
-
-  F.load = () => {
-    let s = null;
-    try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { s = null; }
+  const safeGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const safeSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+  F.normalize = (s) => {
     const d = F.defaultState();
     if (!s || typeof s !== 'object') return d;
-    // shallow-merge defaults so new fields appear after updates
     for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
     s.settings = Object.assign({}, d.settings, s.settings || {});
     s.settings.trainerNames = Object.assign({}, d.settings.trainerNames, s.settings.trainerNames || {});
+    if (!s.xpTotal && Array.isArray(s.xp) && s.xp.length) s.xpTotal = s.xp.reduce((a, x) => a + (x.xp || 0), 0);
+    s.v = 2;
     return s;
   };
-  F.S = F.load();
-  let saveTimer = null;
-  F.save = (now) => {
-    clearTimeout(saveTimer);
-    const run = () => {
-      try { localStorage.setItem(KEY, JSON.stringify(F.S)); }
-      catch (e) { F.toast('저장 공간이 부족해요. 설정 > 백업을 이용해 주세요.'); }
-    };
-    if (now) run(); else saveTimer = setTimeout(run, 150);
+  /* local profiles: lets two people share one device when the app runs outside claude.ai */
+  F.profiles = () => { try { return JSON.parse(safeGet(PKEY) || 'null') || { list: [], cur: null }; } catch (e) { return { list: [], cur: null }; } };
+  F.saveProfiles = (p) => safeSet(PKEY, JSON.stringify(p));
+  F.localKey = (id) => `mypt.state.v2.${id}`;
+  F.loadLocal = () => {
+    let P = F.profiles();
+    if (!P.list.length) {
+      const id = 'p1';
+      P = { list: [{ id, name: '' }], cur: id };
+      const v1 = safeGet(V1KEY);
+      if (v1) safeSet(F.localKey(id), v1);            // migrate v1 data into the first profile
+      F.saveProfiles(P);
+    }
+    if (!P.cur || !P.list.some((x) => x.id === P.cur)) { P.cur = P.list[0].id; F.saveProfiles(P); }
+    let s = null;
+    try { s = JSON.parse(safeGet(F.localKey(P.cur)) || 'null'); } catch (e) { s = null; }
+    F.profileId = P.cur;
+    return F.normalize(s);
   };
-  window.addEventListener('pagehide', () => F.save(true));
-  F.resetAll = () => { localStorage.removeItem(KEY); F.S = F.defaultState(); };
-  F.storageKey = KEY;
+  F.load = F.loadLocal;
+  F.S = F.loadLocal();
+  let saveTimer = null;
+  F.writeLocal = () => {
+    const key = F.Sync && F.Sync.mode === 'cloud' ? `mypt.cache.${F.Sync.uid}` : F.localKey(F.profileId);
+    if (!safeSet(key, JSON.stringify(F.S))) F.toast('기기 저장 공간이 부족해요. 설정 > 백업을 이용해 주세요.');
+  };
+  /** Persist: always to the local cache, and to the cloud when synced (debounced). */
+  F.save = (now) => {
+    F.S.updatedAt = Date.now();
+    clearTimeout(saveTimer);
+    const run = () => { F.writeLocal(); if (F.Sync && F.Sync.push) F.Sync.push(); };
+    if (now) run(); else saveTimer = setTimeout(run, 400);
+  };
+  window.addEventListener('pagehide', () => { F.writeLocal(); if (F.Sync && F.Sync.push) F.Sync.push(true); });
+  F.switchProfile = (id) => { const P = F.profiles(); P.cur = id; F.saveProfiles(P); F.S = F.loadLocal(); };
+  F.addProfile = (name) => { const P = F.profiles(); const id = 'p' + Date.now().toString(36); P.list.push({ id, name: name || '' }); P.cur = id; F.saveProfiles(P); F.S = F.loadLocal(); return id; };
+  F.resetAll = () => { try { localStorage.removeItem(F.localKey(F.profileId)); } catch (e) { /* ignore */ } F.S = F.defaultState(); };
+  F.storageKey = V1KEY;
 
   /* ---------- IndexedDB for original InBody photos ---------- */
   const DB_NAME = 'mypt-files', STORE = 'files';
@@ -168,8 +184,33 @@ window.F = window.F || {};
     if (opts.onOpen) opts.onOpen(wrap);
     return wrap;
   };
+  /** In-page confirm. Resolves true/false. */
+  F.ask = (o = {}) => new Promise((res) => {
+    let done = false;
+    const fin = (v) => { if (done) return; done = true; res(v); };
+    const w = F.sheet(`<div class="ask">
+        <div class="t-label">${F.esc(o.label || 'CHECK')}</div>
+        <h2 class="t-h2" style="margin:6px 0 8px">${F.esc(o.title || '계속할까요?')}</h2>
+        ${o.body ? `<p class="t-small mute2">${F.esc(o.body)}</p>` : ''}
+        ${o.input ? `<input class="input" id="ask-in" maxlength="${o.max || 20}" placeholder="${F.esc(o.placeholder || '')}" value="${F.esc(o.value || '')}" style="margin-top:12px">` : ''}
+        <div class="row" style="gap:8px;margin-top:18px">
+          <button class="btn grow" data-ask="0">${F.esc(o.cancel || '취소')}</button>
+          <button class="btn grow ${o.danger ? 'hot' : 'primary'}" data-ask="1">${F.esc(o.ok || '확인')}</button>
+        </div></div>`);
+    const inp = w.querySelector('#ask-in');
+    if (inp) setTimeout(() => inp.focus(), 60);
+    w.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ask]');
+      if (b) { e.stopPropagation(); const ok = b.dataset.ask === '1'; fin(ok ? (inp ? inp.value.trim() : true) : (inp ? null : false)); F.closeSheet(); return; }
+    }, true);
+    w._onClose = () => fin(inp ? null : false); // backdrop, close button or Esc
+    if (inp) inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { fin(inp.value.trim()); F.closeSheet(); } });
+  });
+  /** In-page text prompt. Resolves the trimmed text, or null when cancelled. */
+  F.askText = (o = {}) => F.ask(Object.assign({}, o, { input: true }));
   F.closeSheet = (instant) => {
     F.$$('.sheet-wrap').forEach((w) => {
+      if (w._onClose) { const f = w._onClose; w._onClose = null; f(); }
       if (instant) w.remove();
       else { w.classList.remove('on'); setTimeout(() => w.remove(), 180); }
     });
@@ -228,10 +269,11 @@ window.F = window.F || {};
   F.icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[name] || IC.info}</svg>`;
 
   /* ---------- Assets ---------- */
+  F.figure = () => (F.S && F.S.settings && F.S.settings.figure) || (F.S && F.S.profile && F.S.profile.sex) || 'm';
+  F.exHref = (id) => '#ex-' + String(id || '').replace(/_/g, '-');
   F.img = {
-    ex: (id) => `assets/img/ex/${id}.webp`,
+    ex: (id, g) => `assets/img/ex/${id}_${g || F.figure()}.webp`,
     food: (id) => `assets/img/food/${id}.webp`,
-    supp: (id) => `assets/img/supp/${id}.webp`,
     trainer: (g, pose) => `assets/img/trainers/${g}-${pose || 'hero'}.webp`,
   };
 

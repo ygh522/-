@@ -148,7 +148,7 @@ window.F = window.F || {};
     const ex = F.EXERCISES[step.exId] || { name: step.type === 'warmup' ? '워밍업' : '쿨다운', moves: [] };
     const t = timerOf(a); if (t.key !== a.i) Object.assign(t, { key: a.i, running: false, acc: 0, since: null, beeped: false });
     const isW = step.type === 'warmup';
-    const body = `${UI.exMedia(ex, 'r11')}
+    const body = `<div class="s-exfig">${UI.exFig(ex, { eager: true })}</div>
       <div class="s-pad">
         <div class="t-label">${isW ? 'WARM-UP' : 'COOL-DOWN'} · ${Math.round(step.dur / 60)} MIN</div>
         <h1 class="t-h1" style="margin:6px 0 4px">${esc(ex.name)}</h1>
@@ -158,7 +158,7 @@ window.F = window.F || {};
           <button class="btn ${t.running ? '' : 'white'}" data-act="s-timer" style="min-width:110px">${t.running ? F.icon('pause') + '일시정지' : F.icon('play') + '타이머'}</button>
         </div>
         <div class="bar thin" style="margin-top:10px;background:#262626"><i id="step-bar" style="width:0"></i></div>
-        <div class="list" style="margin-top:16px">${(ex.moves || []).map((m, i) => `<div style="align-items:flex-start"><span class="num-idx" style="color:var(--accent)">${i + 1}</span><span class="grow"><b style="font-weight:800">${esc(m.name)}</b> <span class="t-num" style="color:var(--accent)">${esc(m.dur)}</span><span class="t-small mute" style="display:block">${esc(m.desc)}</span></span></div>`).join('')}</div>
+        <div class="list" style="margin-top:16px">${(ex.moves || []).map((m, i) => `<div style="align-items:flex-start"><span class="num-idx" style="color:#fff">${i + 1}</span><span class="grow"><b style="font-weight:800">${esc(m.name)}</b> <span class="t-num" style="color:#fff">${esc(m.dur)}</span><span class="t-small mute" style="display:block">${esc(m.desc)}</span></span></div>`).join('')}</div>
       </div>`;
     const foot = `<button class="btn primary lg block" data-act="s-next">${isW ? '워밍업 완료 · 운동 시작' : '쿨다운 완료'} ${F.icon('arrowR')}</button>`;
     return { body, foot };
@@ -176,12 +176,12 @@ window.F = window.F || {};
     if (a.rest) return R.rest(a, step, ex);
     const unitLbl = ex.unit === 'sec' ? '초' : '회';
     const loadBig = loaded ? `<span class="t-mega">${F.num1(a.cur.w)}</span><span class="t-num-m" style="color:#888">kg${ex.unit === 'kg_each' ? ' ×2' : ''}</span><span class="x">×</span>` : '';
-    const body = `${UI.exMedia(ex)}
+    const body = `<div class="s-exfig">${UI.exFig(ex, { eager: true })}</div>
       <div class="s-pad">
         <div class="row between"><span class="t-label">EXERCISE ${info.idx}/${info.n} · SET ${step.set}/${step.of}</span><button class="t-xs link" data-act="s-detail" data-id="${ex.id}" style="color:#ddd">자세 자세히</button></div>
         <h1 class="t-h1" style="margin:6px 0 2px">${esc(ex.name)}</h1>
         <div class="t-small mute">${esc((ex.muscles || []).join(' · '))}${a.consecutive ? ' · 연속 운동일이라 1세트 줄였어요' : ''}</div>
-        <div class="rx" style="margin-top:14px">${loadBig}<span class="t-mega" style="color:var(--accent)" id="cur-r">${a.cur.r}</span><span class="t-num-m" style="color:#888">${ex.repsUnit && ex.repsUnit.includes('한쪽') ? '회 (한쪽)' : unitLbl}</span></div>
+        <div class="rx" style="margin-top:14px">${loadBig}<span class="t-mega" style="color:var(--hot)" id="cur-r">${a.cur.r}</span><span class="t-num-m" style="color:#888">${ex.repsUnit && ex.repsUnit.includes('한쪽') ? '회 (한쪽)' : unitLbl}</span></div>
         <div class="cues" style="margin-top:16px">${(ex.cues || []).map((c, i) => `<div class="cue"><b>${i + 1}</b>${esc(c)}</div>`).join('')}</div>
         <div class="t-label" style="margin-top:20px">실제로 한 기록 (다르면 조정)</div>
         <div class="grid ${loaded ? 'g2' : ''}" style="margin-top:8px">
@@ -206,7 +206,7 @@ window.F = window.F || {};
         <div class="card" style="margin-top:22px;text-align:left;background:#141414;border-color:#262626;color:#F4F4F0">
           <div class="t-label">NEXT</div>
           <div class="t-h2" style="margin-top:4px">${esc(ex.name)} · 세트 ${nxt.set}/${nxt.of}</div>
-          <div class="t-num-l" style="margin-top:6px;color:var(--accent)">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, a.cur.w) + ' × ' : ''}${F.E.repsLabel(ex, a.cur.r)}</div>
+          <div class="t-num-l" style="margin-top:6px;color:#fff">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, a.cur.w) + ' × ' : ''}${F.E.repsLabel(ex, a.cur.r)}</div>
           <p class="t-small mute" style="margin-top:8px">${esc((ex.cues || [])[a.rest.cue % Math.max(1, (ex.cues || []).length)] || '')} — 다음 세트에서 이것 하나만 신경 써요.</p>
         </div>
       </div>`;
@@ -235,11 +235,11 @@ window.F = window.F || {};
         <div class="t-label" style="margin-top:8px">NEXT SESSION · ${esc(ex.name)}</div>
         <div class="row" style="gap:12px;margin:12px 0 4px;align-items:baseline;flex-wrap:wrap">
           <span class="t-num-l" style="color:#777;text-decoration:line-through">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, res.prev.w) + ' × ' : ''}${F.E.repsLabel(ex, res.prev.r)}</span>
-          <span class="t-num-l" style="color:var(--accent)">→</span>
+          <span class="t-num-l" style="color:#fff">→</span>
           <span class="t-num-xl" style="color:#fff">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, res.next.w) + ' × ' : ''}${F.E.repsLabel(ex, res.next.r)}</span>
         </div>
-        <span class="tag" style="background:${res.dir === 'up' ? 'var(--accent)' : res.dir === 'down' ? '#9B2B2F' : '#333'};border:0;color:${res.dir === 'up' ? '#0E0E0E' : '#fff'}">${dirTxt}</span>
-        <div class="coach-row" style="margin-top:22px"><div class="coach-say"><b>${esc(F.coachName())}</b>${esc(res.msg)}</div><img src="${F.coachImg('guide')}" alt=""></div>
+        <span class="tag" style="background:${res.dir === 'up' ? '#fff' : res.dir === 'down' ? 'var(--hot)' : '#333'};border:0;color:${res.dir === 'up' || res.dir === 'down' ? '#000' : '#fff'}">${dirTxt}</span>
+        <div class="coach-row" style="margin-top:22px"><div class="coach-say"><b>${esc(F.coachName())}</b>${esc(res.msg)}</div><img src="${F.coachImg('hero')}" alt=""></div>
       </div>`;
       const nextStep = a.steps[a.i + 1];
       const nextLbl = nextStep && nextStep.type === 'set' ? `다음: ${esc(F.EXERCISES[nextStep.exId].name)}` : nextStep && nextStep.type === 'cardio' ? '다음: 유산소' : '다음';
@@ -256,7 +256,7 @@ window.F = window.F || {};
     if (a.cardioRating) {
       const body = `<div class="s-pad"><div class="t-label" style="margin-top:8px">CARDIO RESULT</div>
         <div class="t-num-xl" style="margin:10px 0 4px">${a.cardioMin}<span class="unit">분</span> · ~${F.num(a.cardioKcal)}<span class="unit">kcal</span></div>
-        <div class="coach-row" style="margin-top:18px"><div class="coach-say"><b>${esc(F.coachName())}</b>${esc(c.msg)} — 다음 세팅: ${esc(cardioMainText(cp.machine, c.cfg))} · ${c.cfg.min}분</div><img src="${F.coachImg('guide')}" alt=""></div></div>`;
+        <div class="coach-row" style="margin-top:18px"><div class="coach-say"><b>${esc(F.coachName())}</b>${esc(c.msg)} — 다음 세팅: ${esc(cardioMainText(cp.machine, c.cfg))} · ${c.cfg.min}분</div><img src="${F.coachImg('hero')}" alt=""></div></div>`;
       return { body, foot: `<button class="btn primary lg block" data-act="s-next">쿨다운으로 ${F.icon('arrowR')}</button>` };
     }
     if (a.cardioAsk) {
@@ -270,11 +270,11 @@ window.F = window.F || {};
       return { body, foot: '' };
     }
     const el2 = elapsedOf(t) / 1000;
-    const body = `${UI.exMedia(ex)}
+    const body = `<div class="s-exfig">${UI.exFig(ex, { eager: true })}</div>
       <div class="s-pad">
         <div class="t-label">CARDIO · LEVEL ${cp.level}/12</div>
         <h1 class="t-h1" style="margin:6px 0 2px">${esc(cp.M.name)}</h1>
-        <div class="t-num-l" style="margin-top:10px;color:var(--accent);font-size:26px">${esc(cp.main)}</div>
+        <div class="t-num-l" style="margin-top:10px;color:var(--hot);font-size:26px">${esc(cp.main)}</div>
         <div class="row" style="margin-top:14px;gap:14px;align-items:center">
           <div class="t-mega" id="step-t" style="font-size:clamp(56px,16vw,88px)">${fmtClock(step.min * 60 - el2)}</div>
           <button class="btn ${t.running ? '' : 'white'}" data-act="s-timer" style="min-width:110px">${t.running ? F.icon('pause') + '일시정지' : F.icon('play') + (el2 > 0 ? '계속' : '시작')}</button>
@@ -309,14 +309,14 @@ window.F = window.F || {};
         <div class="coach-row" style="margin-top:22px;text-align:left"><div class="coach-say"><b>${esc(F.coachName())}</b>${esc(rec.status === 'done' ? '완벽했어요! 30분 안에 단백질 챙기고, 오늘 밤은 7시간 이상 푹 자요. 그게 근육이 되는 시간이에요.' : '끝까지 다 못 했어도 출석한 게 제일 중요해요. 다음엔 오늘 못 한 부분부터 이어서 해요.')}</div><img src="${F.coachImg('cheer')}" alt=""></div>
         <div style="text-align:left;margin-top:8px">
           <div class="t-label">XP +${rec.xp}</div>
-          <div class="list" style="margin-top:6px">${(rec.xpItems || []).map((x) => `<div><span class="grow t-small">${esc(x.note)}</span><span class="t-num" style="color:var(--accent)">+${x.xp}</span></div>`).join('')}</div>
+          <div class="list" style="margin-top:6px">${(rec.xpItems || []).map((x) => `<div><span class="grow t-small">${esc(x.note)}</span><span class="t-num" style="color:#fff">+${x.xp}</span></div>`).join('')}</div>
           <div class="row between" style="margin-top:14px"><span class="t-h3">Lv.${lv.lv} ${esc(lv.title)}</span><span class="t-num mute">${F.num(lv.cur)} / ${F.num(lv.need)}</span></div>
           <div class="bar" style="margin-top:8px;background:#262626"><i style="width:${Math.round(lv.pct * 100)}%"></i></div>
           ${rec.levelUp ? `<div class="callout" style="margin-top:14px;background:#1c1c1c;color:#fff">${F.icon('trophy')}<div><b>레벨 업!</b>Lv.${lv.lv} ${esc(lv.title)}이 됐어요.</div></div>` : ''}
           ${(rec.badges || []).map((id) => { const bd = F.BADGES.find((x) => x.id === id); return bd ? `<div class="callout" style="margin-top:10px;background:#1c1c1c;color:#fff">${F.icon('trophy')}<div><b>배지 획득 · ${esc(bd.name)}</b>${esc(bd.desc)}</div></div>` : ''; }).join('')}
         </div>
       </div>`;
-    const foot = `<div class="btn-row"><button class="btn lg" data-act="s-close-done" data-to="#/rec">출석 도장</button><button class="btn primary lg" data-act="s-close-done" data-to="#/home">홈으로</button></div>`;
+    const foot = `<div class="btn-row"><button class="btn lg" data-act="s-close-done" data-to="#rec">출석 도장</button><button class="btn primary lg" data-act="s-close-done" data-to="#home">홈으로</button></div>`;
     return { body, foot };
   };
 
@@ -389,14 +389,14 @@ window.F = window.F || {};
   };
   A['s-detail'] = (b) => {
     const ex = F.EXERCISES[b.dataset.id];
-    F.sheet(`<div class="t-label mute">FORM GUIDE</div><h2 class="t-h2" style="margin:6px 0 12px">${esc(ex.name)}</h2>${UI.exMedia(ex)}
+    F.sheet(`<div class="t-label mute">FORM GUIDE</div><h2 class="t-h2" style="margin:6px 0 12px">${esc(ex.name)}</h2>${UI.exFig(ex)}
       <h3 class="t-h3" style="margin-top:16px">동작 순서</h3><ol class="steps">${(ex.steps || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
       <h3 class="t-h3" style="margin-top:16px">이렇게 하면 안 돼요</h3><ul class="mistakes">${(ex.mistakes || []).map((x) => `<li>${F.icon('x', 'sm')}<span>${esc(x)}</span></li>`).join('')}</ul>
       ${ex.tip ? `<div class="callout" style="margin-top:14px">${F.icon('info')}<div>${esc(ex.tip)}</div></div>` : ''}`);
   };
   A['s-menu'] = () => {
     const a = act();
-    if (a && a.steps[a.i].type === 'done') { A['s-close-done']({ dataset: { to: '#/home' } }); return; }
+    if (a && a.steps[a.i].type === 'done') { A['s-close-done']({ dataset: { to: '#home' } }); return; }
     F.sheet(`<div class="t-label mute">PAUSE</div><h2 class="t-h2" style="margin:6px 0 14px">운동을 멈출까요?</h2>
       <div class="stack"><button class="btn block lg" data-act="s-leave">잠시 나가기 (이어하기 가능)</button>
       <button class="btn block lg dark" data-act="s-finish-early">여기까지 하고 기록 저장</button>
@@ -405,7 +405,7 @@ window.F = window.F || {};
   A['s-leave'] = () => { F.closeSheet(true); UI._resumeAsked = true; SS.hide(); F.toast('홈의 "운동 시작"을 누르면 이어서 할 수 있어요'); };
   A['s-finish-early'] = () => { F.closeSheet(true); const a = act(); if (a) finish(a, true); };
   A['s-abandon'] = () => { F.closeSheet(true); F.S.active = null; F.save(true); SS.hide(); };
-  A['s-close-done'] = (b) => { F.S.active = null; F.save(true); SS.hide(); location.hash = b.dataset.to || '#/home'; };
+  A['s-close-done'] = (b) => { F.S.active = null; F.save(true); SS.hide(); location.hash = b.dataset.to || '#home'; };
 
   /* ---------- finish & record ---------- */
   const finish = (a, early, silent) => {

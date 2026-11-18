@@ -30,15 +30,15 @@ window.F = window.F || {};
     const p = s.profile;
     const b = F.E.body();
 
-    const upload = `<div class="card accent">
+    const upload = `<div class="card ink">
       <div class="row between"><span class="t-label">INBODY · MONTHLY</span><span class="t-label">${last ? `NEXT ${F.dateLabel(nextDue, false)}` : 'FIRST SCAN'}</span></div>
       <h2 class="t-h1" style="margin:10px 0 6px">${last ? (F.diffDays(last.date, k) >= 28 ? '측정할 때가 됐어요' : '다음 측정까지 ' + Math.max(0, F.diffDays(k, nextDue)) + '일') : '인바디 결과지를 찍어주세요'}</h2>
-      <p class="t-small" style="font-weight:600">결과지 전체가 나오게, 그림자 없이 정면에서 찍어주세요. 체중·골격근량·체지방 등 핵심 수치를 자동으로 읽고 원본도 함께 저장해요.</p>
+      <p class="t-small mute" style="font-weight:600">결과지 전체가 나오게, 그림자 없이 정면에서 찍어주세요. 체중·골격근량·체지방 등 핵심 수치를 자동으로 읽고 원본도 함께 저장해요.</p>
       <div class="btn-row" style="margin-top:14px">
-        <label class="btn dark" style="flex:1.4;cursor:pointer">${F.icon('camera')}사진 올리기<input type="file" accept="image/*" class="sr" data-change="ib-file"></label>
-        <button class="btn" style="background:transparent" data-act="ib-manual">${F.icon('edit')}직접 입력</button>
+        <label class="btn" style="flex:1.4;cursor:pointer;background:#fff;color:#000;border-color:#fff">${F.icon('camera')}사진 올리기<input type="file" accept="image/*" class="sr" data-change="ib-file"></label>
+        <button class="btn light" data-act="ib-manual">${F.icon('edit')}직접 입력</button>
       </div>
-      <details class="acc" style="margin-top:12px;border-color:rgba(0,0,0,.25)"><summary class="t-small">정확하게 측정하는 법 ${F.icon('chevD', 'sm')}</summary><div class="t-small" style="font-weight:600">
+      <details class="acc" style="margin-top:12px;border-color:#2A2A2A"><summary class="t-small">정확하게 측정하는 법 ${F.icon('chevD', 'sm')}</summary><div class="t-small" style="font-weight:600">
         · 아침 공복, 화장실 다녀온 뒤 측정해요<br>· 측정 전 운동·사우나·샤워는 피해요 (수분 변화)<br>· 매번 같은 기계, 같은 시간대, 비슷한 옷차림으로<br>· 측정 간격은 4주 — 너무 자주 재면 오차가 변화보다 커요</div></details>
     </div>`;
 
@@ -65,7 +65,7 @@ window.F = window.F || {};
     if (an && an.projection) {
       const pr = an.projection;
       projection = `<div class="card ink" style="margin-top:12px"><span class="t-label mute">PROJECTION</span>
-        ${pr.date ? `<div class="t-h2" style="color:#fff;margin-top:8px">지금 속도면 <span class="acc">${F.dateLong(pr.date)}</span>에 목표 ${F.num1(p.goalWeight)}kg 도달</div><p class="mute t-small" style="margin-top:4px">주당 ${F.num1(-pr.slopeWeek)}kg 감량 추세 (인바디 ${list.length}회 기록 기반 직선 추세)</p>`
+        ${pr.date ? `<div class="t-h2" style="color:#fff;margin-top:8px">지금 속도면 <span style="text-decoration:underline;text-underline-offset:4px">${F.dateLong(pr.date)}</span>에 목표 ${F.num1(p.goalWeight)}kg 도달</div><p class="mute t-small" style="margin-top:4px">주당 ${F.num1(-pr.slopeWeek)}kg 감량 추세 (인바디 ${list.length}회 기록 기반 직선 추세)</p>`
         : `<div class="t-h3" style="color:#fff;margin-top:8px">아직 감량 추세가 뚜렷하지 않아요</div><p class="mute t-small" style="margin-top:4px">2~3회 더 측정하면 목표 도달 예상일을 계산해 드려요.</p>`}</div>`;
     }
 
@@ -91,23 +91,24 @@ window.F = window.F || {};
 
     const lw = (s.weights || []).slice(-1)[0];
     const quick = `<div class="card"><span class="t-label mute">QUICK LOG · 인바디 사이 체중</span>
-      <div class="row" style="margin-top:10px;gap:8px"><div class="input-unit grow"><input class="input num" id="qw" type="number" inputmode="decimal" step="0.1" placeholder="${F.num1(b.weight)}"><em>kg</em></div><button class="btn dark" data-act="quick-weight">기록</button></div>
+      <div class="row" style="margin-top:10px;gap:8px"><div class="input-unit grow"><input class="input num" id="qw" type="number" inputmode="decimal" step="0.1" placeholder="${F.num1(b.weight)}"><em>kg</em></div><button class="btn primary" data-act="quick-weight">기록</button></div>
       <p class="t-xs mute" style="margin-top:8px">주 1회 같은 요일 아침 공복에 재면 추세가 정확해요.${lw ? ` 마지막 기록: ${F.dateLabel(lw.d, false)} ${F.num1(lw.w)}kg` : ''}</p></div>`;
 
-    const html = `${UI.ph('BODY', '바디 · 인바디', '한 달에 한 번 인바디 결과지를 올리면 핵심 지표를 읽어 변화 추이를 분석해 드려요.')}
-      <div class="cols">
-        <div>
-          <section>${upload}</section>
-          ${last ? `<section class="sec">${UI.secH('LATEST', '최근 측정 결과', '')}${summary}</section>` : ''}
-          <section class="sec">${UI.secH('TREND', '월별 변화 추이', `<button data-act="ib-more">${showMore ? '접기' : '지표 더 보기'} ${F.icon(showMore ? 'minus' : 'plus', 'sm')}</button>`)}
-            <div class="grid g-md-2">${chartHtml}</div></section>
-        </div>
-        <div>
-          ${an ? `<section class="sec">${UI.secH('ANALYSIS', `${esc(F.coachName())}의 분석`, '')}${insights}${projection}</section>` : `<section class="sec">${UI.secH('ANALYSIS', '분석', '')}<div class="empty">인바디를 등록하면 감량의 질(지방 vs 근육), 속도, 목표 도달 예상일을 분석해요.</div></section>`}
-          <section class="sec">${quick}</section>
-        </div>
-      </div>
-      <section class="sec">${UI.secH('HISTORY', '측정 기록 · 원본', '')}${table}</section>`;
+    const html = `<div class="page">${UI.ph('BODY', '바디 · 인바디', '한 달에 한 번 인바디 결과지를 올리면 핵심 수치를 읽어 변화 추이를 분석해요.')}
+      ${UI.isPC() ? '' : UI.logTabs('body')}
+      <div class="split wide-l">
+        <section>
+          ${upload}
+          ${last ? `<div class="sec">${UI.secH('LATEST', '최근 측정 결과', '')}${summary}</div>` : ''}
+          <div class="sec">${UI.secH('TREND', '월별 변화 추이', `<button data-act="ib-more">${showMore ? '접기' : '지표 더 보기'} ${F.icon(showMore ? 'minus' : 'plus', 'sm')}</button>`)}
+            <div class="grid ${UI.isPC() ? 'g2' : ''}">${chartHtml}</div></div>
+        </section>
+        <section>
+          ${an ? `${UI.secH('ANALYSIS', `${esc(F.coachName())}의 분석`, '')}${insights}${projection}` : `${UI.secH('ANALYSIS', '분석', '')}<div class="empty">인바디를 등록하면 감량의 질(지방 vs 근육), 속도, 목표 도달 예상일을 분석해요.</div>`}
+          <div class="sec">${quick}</div>
+          <div class="sec">${UI.secH('HISTORY', '측정 기록 · 원본', '')}${table}</div>
+        </section>
+      </div></div>`;
 
     const after = (root) => {
       F.$$('[data-chart]', root).forEach((elc) => {
@@ -155,19 +156,34 @@ window.F = window.F || {};
     const bar = F.$('#ocr-bar', w), msg = F.$('#ocr-msg', w);
     const labels = { 'loading tesseract core': '엔진 불러오는 중', 'initializing tesseract': '엔진 준비 중', 'loading language traineddata': '한국어 데이터 불러오는 중', 'initializing api': '인식기 준비 중', 'recognizing text': '글자 인식 중' };
     try {
-      const text = await F.OCR.recognize(file, (m) => {
-        if (!bar.isConnected) return;
-        const base = m.status === 'recognizing text' ? 40 : 5;
-        const span = m.status === 'recognizing text' ? 58 : 30;
-        bar.style.width = `${Math.round(base + (m.progress || 0) * span)}%`;
-        msg.textContent = `${labels[m.status] || m.status}… ${Math.round((m.progress || 0) * 100)}%`;
-      });
-      const parsed = F.OCR.parse(text, { height: F.S.profile.height });
-      const found = Object.keys(parsed.values).filter((k2) => parsed.src[k2] === 'ocr').length;
-      openForm({ values: parsed.values, src: parsed.src, warnings: parsed.warnings, date: parsed.date || F.today(), img: true, note: found ? `${found}개 항목을 자동으로 읽었어요. 원본과 비교해 확인 후 저장해 주세요.` : '글자를 충분히 읽지 못했어요. 사진을 보며 직접 입력해 주세요 (원본은 함께 저장돼요).' });
+      let values = {}, src = {}, date = null, warnings = [];
+      if (await F.Sync.canReadImages()) {
+        msg.textContent = 'Claude가 결과지를 읽고 있어요… (10~20초)';
+        bar.style.width = '35%';
+        const r = await F.Sync.readInbody(file);
+        values = r.values; date = r.date;
+        for (const k2 of Object.keys(values)) src[k2] = 'ocr';
+        const chk = F.OCR && F.OCR.parse ? F.OCR.parse('', { height: F.S.profile.height }) : null;
+        if (values.weight && values.bfm && values.pbf == null) { values.pbf = Math.round((values.bfm / values.weight) * 1000) / 10; src.pbf = 'calc'; }
+        if (values.weight && values.bmi == null) { values.bmi = Math.round(F.E.bmi(values.weight, F.S.profile.height) * 10) / 10; src.bmi = 'calc'; }
+        if (values.weight && values.bfm && values.pbf != null && Math.abs((values.bfm / values.weight) * 100 - values.pbf) > 2) warnings.push('체지방률과 체지방량÷체중 값이 맞지 않아요. 확인해 주세요.');
+        void chk;
+      } else {
+        const text = await F.OCR.recognize(file, (m) => {
+          if (!bar.isConnected) return;
+          const base = m.status === 'recognizing text' ? 40 : 5;
+          const span = m.status === 'recognizing text' ? 58 : 30;
+          bar.style.width = `${Math.round(base + (m.progress || 0) * span)}%`;
+          msg.textContent = `${labels[m.status] || m.status}… ${Math.round((m.progress || 0) * 100)}%`;
+        });
+        const parsed = F.OCR.parse(text, { height: F.S.profile.height });
+        values = parsed.values; src = parsed.src; date = parsed.date; warnings = parsed.warnings;
+      }
+      const found = Object.keys(values).filter((k2) => src[k2] === 'ocr').length;
+      openForm({ values, src, warnings, date: date || F.today(), img: true, note: found ? `${found}개 항목을 자동으로 읽었어요. 원본과 비교해 확인 후 저장해 주세요.` : '글자를 충분히 읽지 못했어요. 사진을 보며 직접 입력해 주세요 (원본은 함께 저장돼요).' });
     } catch (e) {
       console.warn(e);
-      openForm({ values: {}, src: {}, warnings: [], date: F.today(), img: true, note: `자동 인식을 사용할 수 없어요 (${e.message || e}). 사진을 보며 직접 입력해 주세요 — 원본은 함께 저장돼요.` });
+      openForm({ values: {}, src: {}, warnings: [], date: F.today(), img: true, note: `자동 인식을 사용할 수 없어요 (${(e && (e.message || e.code)) || e}). 사진을 보며 직접 입력해 주세요 — 원본은 함께 저장돼요.` });
     }
   };
   A['ib-manual'] = () => { pending = null; openForm({ values: {}, src: {}, warnings: [], date: F.today(), img: false, note: '' }); };
@@ -212,7 +228,7 @@ window.F = window.F || {};
           if (rec.bmi == null) rec.bmi = Math.round(F.E.bmi(rec.weight, F.S.profile.height) * 10) / 10;
           if (o.img && pending && pending.file) {
             const fid = 'ib_' + rec.id;
-            try { await F.idb.put(fid, pending.file); rec.img = fid; } catch (err) { F.toast('원본 사진 저장에 실패했어요 (저장 공간 확인)'); }
+            try { rec.img = await F.Sync.putFile(pending.file, fid); } catch (err) { F.toast('원본 사진 저장에 실패했어요 (저장 공간 확인)'); }
           }
           if (!o.editId) {
             F.S.inbody.push(rec);
@@ -223,7 +239,7 @@ window.F = window.F || {};
           pending = null;
           F.closeSheet();
           F.toast(o.editId ? '수정했어요' : '인바디를 저장했어요 · 칼로리·단백질 목표가 갱신됐어요');
-          location.hash = '#/body';
+          location.hash = '#body';
           UI.refresh();
         });
       },
@@ -231,16 +247,16 @@ window.F = window.F || {};
   };
   A['ib-del'] = async (el) => {
     const id = el.dataset.id;
-    if (!confirm('이 인바디 기록과 원본 사진을 삭제할까요?')) return;
+    if (!(await F.ask({ label: 'DELETE', title: '이 인바디 기록을 삭제할까요?', body: '원본 사진도 함께 지워져요.', ok: '삭제', danger: true }))) return;
     const r = F.S.inbody.find((x) => x.id === id);
-    if (r && r.img) { try { await F.idb.del(r.img); } catch (e) { /* ignore */ } }
+    if (r && r.img) await F.Sync.deleteFile(r.img);
     F.S.inbody = F.S.inbody.filter((x) => x.id !== id);
     F.save(true); F.closeSheet(); UI.refresh();
   };
   A['ib-view'] = async (el) => {
     const r = F.S.inbody.find((x) => x.id === el.dataset.id);
     if (!r) return;
-    const url = await F.fileURL(r.img);
+    const url = await F.Sync.fileURL(r.img);
     F.sheet(`<div class="t-label mute">ORIGINAL · ${F.dateLong(r.date)}</div><h2 class="t-h2" style="margin:6px 0 12px">인바디 원본</h2>
       ${url ? `<img src="${url}" alt="인바디 원본" style="width:100%;background:#fff">` : '<div class="empty">원본 사진을 찾을 수 없어요 (다른 기기에서 등록했거나 저장소가 비워졌어요)</div>'}`, { wide: true });
   };

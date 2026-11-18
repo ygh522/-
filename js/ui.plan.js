@@ -21,7 +21,7 @@ window.F = window.F || {};
 
     /* phase card */
     const phaseCard = `<div class="card ink">
-      <div class="row between"><span class="t-label mute">PHASE ${ph.id} / 3 · ${ph.en}${ph.cycle > 1 ? ' · CYCLE ' + ph.cycle : ''}</span><span class="tag acc">${ph.reps[0]}~${ph.reps[1]}회 · ${ph.sets}세트</span></div>
+      <div class="row between"><span class="t-label mute">PHASE ${ph.id} / 3 · ${ph.en}${ph.cycle > 1 ? ' · CYCLE ' + ph.cycle : ''}</span><span class="tag" style="background:#fff;color:#000">${ph.reps[0]}~${ph.reps[1]}회 · ${ph.sets}세트</span></div>
       <h2 class="t-h1" style="color:#fff;margin:10px 0 6px">${esc(ph.name)}</h2>
       <p class="mute" style="font-size:14px">${esc(ph.goal)}</p>
       <div class="phase-steps">${F.PHASES.map((p) => `<div class="${p.id === ph.id ? 'on' : p.id < ph.id ? 'past' : ''}"><b>P${p.id}</b>${esc(p.name)}</div>`).join('')}</div>
@@ -40,9 +40,9 @@ window.F = window.F || {};
       if ((w.status === 'planned' || w.status === 'today') && w.k >= k) act = `<button class="btn sm ghost" data-act="open-resched" data-date="${w.k}">약속 생김</button>`;
       if (w.status === 'today') act = `<button class="btn sm primary" data-act="start-session" data-date="${w.k}">${F.icon('play', 'sm')}시작</button>` + act;
       if ((w.status === 'moved' || w.status === 'skipped' || (w.plan && w.plan.moved)) && w.k >= k && !w.ses) act += `<button class="btn sm ghost" data-act="undo-ov" data-date="${w.k}" aria-label="되돌리기">${F.icon('refresh', 'sm')}</button>`;
-      if (w.status === 'done' || w.status === 'partial') act = `<span class="tag acc">+${(w.ses && w.ses.xp) || 0} XP</span>`;
+      if (w.status === 'done' || w.status === 'partial') act = `<span class="tag" style="background:#fff;color:#000">+${(w.ses && w.ses.xp) || 0} XP</span>`;
       if (w.status === 'missed') act = `<span class="pill-no">놓침</span>`;
-      return `<div class="${isToday ? 'today-row' : ''}" style="${isToday ? 'background:var(--surface);margin:0 -10px;padding-left:10px;padding-right:10px;border-left:4px solid var(--accent)' : ''}">
+      return `<div class="${isToday ? 'today-row' : ''}" style="${isToday ? 'background:var(--surface-2);margin:0 -10px;padding-left:10px;padding-right:10px;border-left:3px solid var(--hot)' : ''}">
         <div style="width:58px;flex:none"><div class="t-label ${isToday ? 'acc' : 'mute'}">${F.DAY_EN[w.dow]}</div><div class="t-num" style="font-size:17px">${F.dateLabel(w.k, false)}</div></div>
         ${UI.stamp(w.status === 'today' ? 'today' : w.status)}
         <div class="grow" style="min-width:0">${main}</div>
@@ -62,7 +62,7 @@ window.F = window.F || {};
       <details class="acc" style="margin-top:14px"><summary>왜 이 요일인가요? ${F.icon('chevD', 'sm')}</summary><div>
         ${pat.reasons.map((r, i) => `<div class="reason"><b>0${i + 1}</b><span>${esc(r)}</span></div>`).join('')}
         ${custom ? `<div class="callout" style="margin-top:10px">${F.icon('info')}<div><b>요일을 직접 바꿨어요</b>추천 패턴(${esc(pat.title)})과 달라요. ${s.settings.freq <= 3 ? '전신 운동은 연속일이 생기지 않게 배치하는 게 좋아요.' : ''}</div></div>` : ''}
-        <a class="btn sm" href="#/set" style="margin-top:12px">요일 · 시간 바꾸기</a></div></details>`;
+        <a class="btn sm" href="#set" style="margin-top:12px">요일 · 시간 바꾸기</a></div></details>`;
 
     /* routine tabs */
     const t = F.TEMPLATES[tab];
@@ -70,14 +70,14 @@ window.F = window.F || {};
       <div class="card">
         <div class="row between"><div><div class="t-label mute">${esc(t.en)}</div><h3 class="t-h2" style="margin-top:4px">${esc(t.name)}</h3><p class="t-small mute2">${esc(t.focus)} · 약 ${F.E.estimateMinutes(tab)}분</p></div></div>
         <div style="margin-top:6px">
-          <div class="exrow" style="border-top:1px solid var(--line-soft)"><div class="thumb">${`<img src="${F.img.ex('warmup')}" alt="" loading="lazy">`}</div><div class="grow"><b>워밍업</b><div class="t-xs mute">러닝머신/사이클 5분 + 동적 스트레칭 4종</div></div><span class="t-num mute" style="font-size:13px">6분</span></div>
+          <div class="exrow" style="border-top:1px solid var(--line-soft)"><div class="thumb"><img src="${F.img.ex('warmup')}" alt="" loading="lazy"></div><div class="grow"><b>워밍업</b><div class="t-xs mute">러닝머신/사이클 5분 + 동적 스트레칭 4종</div></div><span class="t-num mute" style="font-size:13px">6분</span></div>
           ${t.ex.filter((id) => F.EXERCISES[id]).map((id, i) => {
             const ex = F.EXERCISES[id];
             const p = F.E.prescription(id);
-            return `<div class="exrow"><a class="thumb" href="#/ex/${id}"><img src="${F.img.ex(id)}" alt="" loading="lazy"></a>
-              <div class="grow" style="min-width:0"><a href="#/ex/${id}"><b style="font-weight:800">${F.pad(i + 1)} ${esc(ex.name)}</b></a>
+            return `<div class="exrow"><a class="thumb" href="${F.exHref(id)}"><img src="${F.img.ex(id)}" alt="" loading="lazy"></a>
+              <div class="grow" style="min-width:0"><a href="${F.exHref(id)}"><b style="font-weight:800">${F.pad(i + 1)} ${esc(ex.name)}</b></a>
                 <div class="rx">${UI.rx(id)}</div>
-                <div class="row wrap" style="gap:6px 10px;margin-top:4px"><span class="t-xs mute">휴식 ${p.rest}초 · ${p.calibrated ? '<span class="acc" style="font-weight:800">테스트 반영됨</span>' : F.E.isLoaded(ex) ? '추정 시작 무게' : '자세 우선'}</span>
+                <div class="row wrap" style="gap:6px 10px;margin-top:4px"><span class="t-xs mute">휴식 ${p.rest}초 · ${p.calibrated ? '<b>테스트 반영됨</b>' : F.E.isLoaded(ex) ? '추정 시작 무게' : '자세 우선'}</span>
                 <button class="t-xs link" data-act="open-test" data-id="${id}">${F.E.isLoaded(ex) ? '무게 테스트' : '횟수 테스트'} ›</button></div></div></div>`;
           }).join('')}
           <div class="exrow"><div class="thumb"><img src="${F.img.ex(F.E.cardioPlan(k, tab).machine)}" alt="" loading="lazy"></div><div class="grow"><b>유산소 · ${esc(F.E.cardioPlan(k, tab).M.short)}</b><div class="rx">${esc(F.E.cardioPlan(k, tab).main)} · ${F.E.cardioPlan(k, tab).min}분</div></div></div>
@@ -111,17 +111,12 @@ window.F = window.F || {};
         ${st.hist.length ? `<p class="t-xs mute" style="margin-top:10px">최근 기록: ${st.hist.slice(-3).map((h) => `${F.dateLabel(h.d, false)} ${h.min}분(${F.E.RATING[h.rating].label})`).join(' · ')}</p>` : ''}
       </div>`;
 
-    return `${UI.ph('PLAN', '운동 플랜', `${esc(F.josa(F.coachName(), '이/가'))} 짠 주 ${s.settings.freq}회 루틴이에요. 기록할수록 무게와 유산소 강도가 내 몸에 맞게 조정돼요.`)}
-      <div class="cols">
-        <div>
-          <section>${phaseCard}</section>
-          <section class="sec">${UI.secH('SCHEDULE', '주간 스케줄', '')}${weekHtml}</section>
-        </div>
-        <div>
-          <section class="sec">${UI.secH('ROUTINE', '루틴 · 무게 처방', '')}${routine}</section>
-          <section class="sec">${UI.secH('CARDIO', '유산소 세팅값', '')}${cardio}</section>
-        </div>
-      </div>`;
+    return `<div class="page">${UI.ph('PLAN', '운동 플랜', `${esc(F.josa(F.coachName(), '이/가'))} 짠 주 ${s.settings.freq}회 루틴이에요. 기록할수록 무게와 유산소 강도가 내 몸에 맞게 조정돼요.`)}
+      <div class="split w3">
+        <section>${phaseCard}<div class="sec">${UI.secH('SCHEDULE', '주간 스케줄', '')}${weekHtml}</div></section>
+        <section>${UI.secH('ROUTINE', '루틴 · 무게 처방', '')}${routine}</section>
+        <section>${UI.secH('CARDIO', '유산소 세팅값', '')}${cardio}</section>
+      </div></div>`;
   };
 
   A['week-nav'] = (el) => { weekOffset = F.clamp(weekOffset + +el.dataset.d, -26, 8); UI.refresh(); };

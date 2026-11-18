@@ -11,26 +11,58 @@ window.F = window.F || {};
   F.coachImg = (pose) => F.img.trainer(F.S.settings.trainer, pose);
 
   /* ---------- Theme ---------- */
+  // 'system' follows the viewer: claude.ai's own theme (data-theme on <html>) or the OS setting.
+  // An explicit choice in the app goes on data-app-theme so it never fights the host's attribute.
+  UI.isDark = () => {
+    const de = document.documentElement;
+    const t = de.dataset.appTheme || de.dataset.theme;
+    if (t) return t === 'dark';
+    return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  };
   UI.applyTheme = () => {
-    const t = F.S.settings.theme;
-    const dark = t === 'dark' || (t === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    const t = (F.S && F.S.settings && F.S.settings.theme) || 'system';
+    const de = document.documentElement;
+    if (t === 'light' || t === 'dark') de.dataset.appTheme = t; else delete de.dataset.appTheme;
     const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute('content', dark ? '#0A0A0A' : '#EDEDEA');
+    if (m) m.setAttribute('content', UI.isDark() ? '#000000' : '#FFFFFF');
   };
   if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => UI.applyTheme());
+
+  /* ---------- Layout mode: mobile portrait (gym) vs PC 16:9 (information) ---------- */
+  UI.mode = () => (window.innerWidth >= 1024 && window.innerWidth > window.innerHeight ? 'pc' : 'mobile');
+  UI.applyMode = () => { const m = UI.mode(); const changed = document.documentElement.dataset.mode !== m; document.documentElement.dataset.mode = m; return changed; };
+  UI.isPC = () => document.documentElement.dataset.mode === 'pc';
+  let rz = null;
+  window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (UI.applyMode() && F.S.profile) { F.$('#app').dataset.shell = ''; F.render(); } }, 150); });
 
   /* ---------- Shared components ---------- */
   UI.ph = (label, title, desc) => `<header class="ph"><div class="t-label">${esc(label)}</div><h1 class="t-h1">${title}</h1>${desc ? `<p>${desc}</p>` : ''}</header>`;
   UI.secH = (label, title, right = '') => `<div class="sec-h"><div><span class="t-label">${esc(label)}</span><h2 class="t-h2">${title}</h2></div>${right}</div>`;
+  UI.cellH = (label, right = '') => `<div class="cell-h"><span class="t-label">${esc(label)}</span>${right}</div>`;
 
-  UI.exMedia = (ex, cls = 'r32', labels = true) => {
+  /** Exercise figure: stacked START/FINISH image (male or female figure). */
+  UI.exFig = (ex, o = {}) => {
     if (!ex) return '';
-    let lbl = '';
-    if (labels && ex.layout === '2p') lbl = '<span class="lbl l">START</span><span class="lbl r">FINISH</span>';
-    if (labels && ex.layout === 'grid') lbl = '<span class="grid-lbl" style="left:0;top:0">1</span><span class="grid-lbl" style="left:50%;top:0">2</span><span class="grid-lbl" style="left:0;top:50%">3</span><span class="grid-lbl" style="left:50%;top:50%">4</span>';
-    const ratio = ex.layout === 'grid' ? 'r11' : cls;
-    return `<div class="media ${ratio}"><img src="${F.img.ex(ex.img || ex.id)}" alt="${esc(ex.name)} 자세" loading="lazy" decoding="async">${lbl}</div>`;
+    const g = o.g || F.figure();
+    const lbl = ex.layout === '2p' ? '<span class="pl s">START</span><span class="pl f">FINISH</span>' : '';
+    const gsw = o.switch ? `<div class="gsw" role="group" aria-label="이미지 성별"><button class="${g === 'm' ? 'on' : ''}" data-act="fig-g" data-g="m" data-id="${ex.id}">남</button><button class="${g === 'f' ? 'on' : ''}" data-act="fig-g" data-g="f" data-id="${ex.id}">여</button></div>` : '';
+    const zoom = o.zoom ? `<button class="zoom" data-act="zoom" data-src="${F.img.ex(ex.id, g)}" aria-label="크게 보기">${F.icon('plus', 'sm')}</button>` : '';
+    return `<figure class="exfig l-${ex.layout || '2p'} ${o.cls || ''}" data-ex="${ex.id}"><img src="${F.img.ex(ex.id, g)}" alt="${esc(ex.name)} ${ex.layout === '2p' ? '시작·끝 자세' : '자세'}" loading="${o.eager ? 'eager' : 'lazy'}" decoding="async">${lbl}${gsw}${zoom}</figure>`;
+  };
+  UI.exMedia = (ex) => UI.exFig(ex);
+  A['fig-g'] = (el) => {
+    const fig = el.closest('.exfig');
+    const g = el.dataset.g, id = el.dataset.id;
+    fig.querySelector('img').src = F.img.ex(id, g);
+    fig.querySelectorAll('.gsw button').forEach((b) => b.classList.toggle('on', b.dataset.g === g));
+    const z = fig.querySelector('.zoom'); if (z) z.dataset.src = F.img.ex(id, g);
+  };
+  A.zoom = (el) => {
+    const lb = document.createElement('div');
+    lb.className = 'lb';
+    lb.innerHTML = `<img src="${el.dataset.src}" alt=""><button aria-label="닫기">${F.icon('x')}</button>`;
+    lb.addEventListener('click', () => lb.remove());
+    document.body.appendChild(lb);
   };
 
   UI.rx = (exId, opt = {}) => {
@@ -39,13 +71,28 @@ window.F = window.F || {};
     const load = F.E.isLoaded(ex) ? F.E.loadLabel(ex, p.w) : '맨몸';
     return opt.parts ? { load, reps: F.E.repsLabel(ex, p.r), sets: `${p.sets}세트`, p } : `${load} × ${F.E.repsLabel(ex, p.r)} × ${p.sets}세트`;
   };
+  /** 4-cell prescription box: load / reps / sets / rest */
+  UI.rxBox = (exId) => {
+    const p = F.E.prescription(exId), ex = p.ex;
+    const load = F.E.isLoaded(ex) ? `${F.num1(p.w)}<small>kg${ex.unit === 'kg_each' ? ' ×2' : ''}</small>` : '<small>맨몸</small>';
+    return `<div class="rxbox"><div><span class="t-label">WEIGHT</span><div class="v">${load}</div></div>
+      <div><span class="t-label">REPS</span><div class="v">${p.r}<small>${ex.unit === 'sec' ? '초' : ex.repsUnit && ex.repsUnit.includes('한쪽') ? '회/한쪽' : '회'}</small></div></div>
+      <div><span class="t-label">SETS</span><div class="v">${p.sets}<small>세트</small></div></div>
+      <div><span class="t-label">REST</span><div class="v">${p.rest}<small>초</small></div></div></div>`;
+  };
+  /** Recommended first-session load for men and women */
+  UI.mfStart = (ex) => {
+    if (!ex.start) return '';
+    const u = ex.unit === 'kg_each' ? 'kg (한 손)' : 'kg';
+    return `<div class="mf"><div><span class="t-label mute">남성 시작</span><div class="t-num-m">${F.num1(ex.start.m)}<span class="unit">${u}</span></div></div><div><span class="t-label mute">여성 시작</span><div class="t-num-m">${F.num1(ex.start.f)}<span class="unit">${u}</span></div></div></div>`;
+  };
 
   UI.stamp = (status) => {
     const ic = status === 'done' ? F.icon('check') : status === 'missed' ? F.icon('x') : status === 'moved' || status === 'skipped' ? F.icon('arrowR') : '';
     return `<span class="st ${status}">${ic}</span>`;
   };
-
   UI.statusText = { done: '완료', partial: '부분 완료', planned: '예정', today: '오늘', missed: '놓침', moved: '이동됨', skipped: '건너뜀', rest: '휴식' };
+  UI.myName = () => (F.S.profile && F.S.profile.name) || (F.Sync.me && F.Sync.me.name) || '';
 
   /* Trainer lines — contextual, PT tone */
   UI.coachLine = () => {
@@ -53,69 +100,76 @@ window.F = window.F || {};
     const pl = F.E.planFor(k);
     const ses = s.sessions[k];
     const h = new Date().getHours();
-    const name = (s.profile && s.profile.name) ? `${s.profile.name}님` : '회원님';
+    const nm = UI.myName();
+    const name = nm ? `${nm}님` : '회원님';
     const streak = F.E.streakWeeks();
     if (s.active && s.active.date === k) return `${name}, 운동이 아직 진행 중이에요. 이어서 끝내볼까요?`;
-    if (ses && (ses.status === 'done' || ses.status === 'partial')) return pick([`오늘 운동 완벽했어요! 단백질 챙기고 7시간 이상 푹 자는 것까지가 운동이에요.`, `수고했어요 ${name}. 오늘 기록 다음 세션에 그대로 반영해 둘게요.`]);
+    if (ses && (ses.status === 'done' || ses.status === 'partial')) return pick([`오늘 운동 완벽했어요! 단백질 챙기고 7시간 이상 푹 자는 것까지가 운동이에요.`, `수고했어요 ${name}. 오늘 기록은 다음 세션 무게에 그대로 반영해 둘게요.`]);
     if (pl) {
       const t = F.TEMPLATES[F.E.templateFor(k)];
       const gt = F.timeToMin(pl.time);
-      if (F.nowMin() > gt + 90) return `오늘 ${t.name} 일정이 지났어요. 아직 늦지 않았어요 — 못 가면 '약속 생김'으로 대체일을 잡아둘게요.`;
-      return pick([`오늘은 ${t.name} 데이! ${pl.time}에 만나요. 운동 2시간 전엔 가볍게 먹어두세요.`, `${name}, 오늘 ${t.name}이에요. 지난번 기록 보고 무게 맞춰놨어요. ${pl.time}에 시작해요!`, `오늘 ${pl.time} 운동 잊지 마세요. 시작만 하면 제가 끝까지 이끌어 드릴게요.`]);
+      if (F.nowMin() > gt + 90) return `오늘 ${t.name} 일정이 지났어요. 못 가면 '약속 생김'으로 대체일을 잡아둘게요.`;
+      return pick([`오늘은 ${t.name}! ${pl.time}에 만나요. ${gt >= 18 * 60 + 20 ? `저녁은 ${F.minToTime(Math.max(17 * 60 + 30, gt - 90))}쯤 먹고 오세요.` : '운동 1시간 30분 전엔 뭐라도 먹어두세요.'}`, `${name}, 오늘 ${t.name}이에요. 지난 기록 보고 무게 맞춰놨어요.`, `${pl.time} 운동 잊지 마세요. 시작만 하면 끝까지 이끌어 드릴게요.`]);
     }
     const nx = F.E.nextPlanned(F.addDays(k, 1));
-    if (h < 11) return `오늘은 회복일이에요. 근육은 쉬는 날 자라요. 대신 8,000보 걷기 + 단백질 목표는 꼭!`;
-    if (streak >= 2) return `${streak}주 연속 목표 달성 중이에요. 이 흐름 그대로 ${nx ? F.dateLabel(nx) : '다음 운동'}에 만나요!`;
-    return `쉬는 날도 관리는 계속돼요. 오늘 식단 체크하고, 다음 운동은 ${nx ? F.dateLabel(nx) : '곧'}이에요.`;
+    if (h < 11) return `오늘은 회복일이에요. 근육은 쉬는 날 자라요. 걷기 30분 + 단백질은 꼭!`;
+    if (streak >= 2) return `${streak}주 연속 목표 달성 중! ${nx ? F.dateLabel(nx) : '다음 운동'}에 만나요.`;
+    return `쉬는 날도 관리는 계속돼요. 다음 운동은 ${nx ? F.dateLabel(nx) : '곧'}이에요.`;
   };
   const pick = (arr) => arr[new Date().getDate() % arr.length];
 
   /* ---------- Shell ---------- */
-  const TABS = [
-    { id: 'home', label: '홈', icon: 'home' },
-    { id: 'plan', label: '플랜', icon: 'plan' },
-    { id: 'lib', label: '자세', icon: 'dumbbell' },
-    { id: 'food', label: '식단', icon: 'bowl' },
-    { id: 'body', label: '바디', icon: 'body' },
+  const NAV = [
+    { id: 'home', mo: '오늘', pc: '대시보드', icon: 'home' },
+    { id: 'plan', mo: '플랜', pc: '운동 플랜', icon: 'plan' },
+    { id: 'lib', mo: '자세', pc: '운동 가이드', icon: 'dumbbell' },
+    { id: 'food', mo: '식단', pc: '식단', icon: 'bowl' },
+    { id: 'log', mo: '기록', pc: '운동 일지', icon: 'list' },
+    { id: 'body', pc: '바디 · 인바디', icon: 'body', pcOnly: true },
+    { id: 'rec', pc: '출석 · 레벨', icon: 'stamp', pcOnly: true },
+    { id: 'set', pc: '설정', icon: 'gear', pcOnly: true },
   ];
+  const TAB_OF = { ex: 'lib', rec: 'rec', body: 'body', log: 'log' };
   UI.shell = () => {
     const root = F.$('#app');
     if (root.dataset.shell === '1') return;
     root.dataset.shell = '1';
     root.innerHTML = `
       <header class="topbar">
-        <a class="logo" href="#/home"><i></i>MY PT</a>
+        <a class="logo" href="#home"><i></i>MY PT</a>
         <div class="top-right">
-          <a class="lv-chip" href="#/rec" id="lvchip"></a>
-          <a class="icon-btn" href="#/set" aria-label="설정">${F.icon('gear')}</a>
+          <span class="sync-dot ${F.Sync.mode === 'cloud' ? (F.Sync.status === 'error' ? 'err' : 'on') : ''}" title="${F.Sync.mode === 'cloud' ? '클라우드 동기화' : '이 기기에만 저장'}"></span>
+          <a class="who" href="#set" id="who"></a>
+          <a class="icon-btn mo-only" href="#set" aria-label="설정">${F.icon('gear')}</a>
         </div>
       </header>
       <main id="view" tabindex="-1"></main>
       <nav class="tabbar" aria-label="메인 메뉴">
-        ${TABS.map((t) => `<a href="#/${t.id}" data-tab="${t.id}">${F.icon(t.icon)}<span>${t.label}</span></a>`).join('')}
-        <span class="nav-sep"></span>
-        <a href="#/rec" data-tab="rec" class="nav-extra">${F.icon('stamp')}<span>출석 · 기록</span></a>
-        <a href="#/set" data-tab="set" class="nav-extra">${F.icon('gear')}<span>설정</span></a>
+        ${NAV.map((t) => `<a href="#${t.id}" data-tab="${t.id}" class="${t.pcOnly ? 'pc-only' : ''}">${F.icon(t.icon)}<span class="mo-only">${t.mo || ''}</span><span class="pc-only">${t.pc}</span></a>`).join('')}
       </nav>
       <div id="session" aria-live="polite"></div>`;
   };
-
   UI.updateTop = () => {
     const lv = F.E.level();
-    const el = F.$('#lvchip');
-    if (el) el.innerHTML = `<b>Lv.${lv.lv}</b><span>${esc(lv.title)}</span><span class="mini-bar"><i style="width:${Math.round(lv.pct * 100)}%"></i></span>`;
+    const el = F.$('#who');
+    const nm = UI.myName();
+    if (el) el.innerHTML = `<img src="${F.coachImg('hero')}" alt=""><span>${esc(nm || '내 기록')}</span><b>Lv.${lv.lv}</b>`;
+    const d = F.$('.sync-dot');
+    if (d) d.className = 'sync-dot ' + (F.Sync.mode === 'cloud' ? (F.Sync.status === 'error' ? 'err' : 'on') : '');
   };
 
   /* ---------- Router ---------- */
   F.route = () => {
-    const h = location.hash.replace(/^#\/?/, '');
-    const [name, ...rest] = h.split('/');
+    let h = location.hash.replace(/^#\/?/, '');
+    try { h = decodeURIComponent(h); } catch (e) { /* keep raw */ }
+    if (h.startsWith('ex-')) return { name: 'ex', rest: [h.slice(3).replace(/-/g, '_')] };
+    const [name, ...rest] = h.split('/'); // legacy #/ex/<id> links still work outside claude.ai
     return { name: name || 'home', rest };
   };
   F.go = (hash) => { if (location.hash === hash) F.render(); else location.hash = hash; };
-
   F.render = () => {
     UI.applyTheme();
+    UI.applyMode();
     if (!F.S.profile) { V.onboard(); return; }
     UI.shell();
     const r = F.route();
@@ -124,17 +178,23 @@ window.F = window.F || {};
     const html = typeof out === 'string' ? out : out.html;
     const main = F.$('#view');
     main.innerHTML = html;
-    F.$$('.tabbar a').forEach((a) => a.classList.toggle('on', a.dataset.tab === (r.name === 'ex' ? 'lib' : r.name)));
+    const tab = TAB_OF[r.name] || r.name;
+    const moTab = ['body', 'rec', 'log'].includes(tab) ? 'log' : tab;
+    F.$$('.tabbar a').forEach((a) => a.classList.toggle('on', a.dataset.tab === (UI.isPC() ? tab : moTab)));
     UI.updateTop();
     if (out && out.after) requestAnimationFrame(() => out.after(main));
-    if (UI._lastRoute !== location.hash) { window.scrollTo(0, 0); UI._lastRoute = location.hash; }
+    if (UI._lastRoute !== location.hash) { (UI.isPC() ? main : window).scrollTo(0, 0); UI._lastRoute = location.hash; }
     if (F.S.active && !F.$('#session.on') && !UI._resumeAsked) {
       UI._resumeAsked = true;
       if (F.S.active.date === F.today()) UI.askResume();
     }
   };
-  UI.refresh = () => { const y = window.scrollY; F.render(); window.scrollTo(0, y); };
-
+  UI.refresh = () => {
+    const sc = UI.isPC() ? F.$('#view') : document.scrollingElement;
+    const y = sc ? sc.scrollTop : 0;
+    F.render();
+    if (sc) sc.scrollTop = y;
+  };
   window.addEventListener('hashchange', F.render);
 
   /* ---------- Events ---------- */
@@ -150,8 +210,7 @@ window.F = window.F || {};
     const fn = A[el.dataset.change];
     if (fn) fn(el, e);
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') F.closeSheet(); });
-
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { F.closeSheet(); const lb = F.$('.lb'); if (lb) lb.remove(); } });
   A['sheet-close'] = () => F.closeSheet();
   A.go = (el) => F.go(el.dataset.href);
 
@@ -162,7 +221,7 @@ window.F = window.F || {};
     F.sheet(`
       <div class="coach-row" style="grid-template-columns:1fr 110px">
         <div class="coach-say" style="box-shadow:4px 4px 0 var(--ink)"><b>${esc(F.coachName())}</b>${esc(body)}</div>
-        <img src="${F.coachImg('guide')}" alt="" style="width:110px;height:150px;object-fit:cover;object-position:top">
+        <img src="${F.coachImg('hero')}" alt="" style="width:110px;height:150px;object-fit:cover;object-position:top">
       </div>
       <div class="t-label mute" style="margin-top:6px">${kind === 'lead' ? 'REMINDER' : 'GYM TIME'}</div>
       <h2 class="t-h1" style="margin:6px 0 4px">${esc(title)}</h2>
@@ -186,10 +245,19 @@ window.F = window.F || {};
   const ONB = { step: 0, d: null };
   const onbDefaults = () => ({ trainer: 'm', name: '', sex: 'm', age: 32, height: 171, weight: 90, goalWeight: null, pace: 'normal', freq: 3, days: [1, 3, 5], gymTime: '19:30' });
 
+  UI.boot = () => {
+    const root = F.$('#app');
+    root.dataset.shell = '';
+    root.innerHTML = `<div class="boot"><span class="logo"><i></i>MY PT</span>
+      <div class="t-h2">내 기록을 불러오는 중이에요</div>
+      <div class="bar"><i></i></div>
+      <p class="t-small mute">휴대폰과 PC의 기록을 맞추고 있어요.</p></div>`;
+  };
+
   V.onboard = () => {
     const root = F.$('#app');
     root.dataset.shell = '';
-    if (!ONB.d) ONB.d = onbDefaults();
+    if (!ONB.d) { ONB.d = onbDefaults(); if (F.Sync.me && F.Sync.me.name) ONB.d.name = String(F.Sync.me.name).slice(0, 12); }
     const d = ONB.d;
     const steps = ['코치', '기본 정보', '목표', '스케줄', '시작'];
     const top = `<div class="onb-top"><div class="row between"><span class="logo"><i></i>MY PT</span><span class="t-label mute">${String(ONB.step + 1).padStart(2, '0')} / 05</span></div>
@@ -253,7 +321,7 @@ window.F = window.F || {};
         <h1 class="t-h1" style="margin:10px 0 16px">플랜이 준비됐어요.</h1>
         <div class="card ink">
           <div class="row between"><div class="kpi"><span class="t-label">START</span><div class="t-num-xl">${F.num1(d.weight)}<span class="unit">kg</span></div></div>
-          <div style="font-family:var(--num);font-size:28px;color:var(--accent)">→</div>
+          <div style="font-family:var(--num);font-size:28px">→</div>
           <div class="kpi"><span class="t-label">GOAL</span><div class="t-num-xl">${F.num1(d.goalWeight)}<span class="unit">kg</span></div></div></div>
           <div class="divider"></div>
           <div class="list">
@@ -293,7 +361,7 @@ window.F = window.F || {};
     F.E.addXP('onboard', 50, '플랜 시작 보너스');
     F.save(true);
     ONB.step = 0; ONB.d = null;
-    location.hash = '#/home';
+    location.hash = '#home';
     F.render();
     setTimeout(() => F.toast(`${F.coachName()}: 잘 부탁해요! 오늘부터 시작이에요.`), 300);
   };

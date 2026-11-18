@@ -1,8 +1,8 @@
 /* MY PT service worker — offline shell + runtime caching. Bump VERSION on every release. */
-const VERSION = 'mypt-v1';
+const VERSION = 'mypt-v2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/core.js', 'js/data.program.js', 'js/data.exercises.js', 'js/data.nutrition.js', 'js/engine.js', 'js/charts.js',
+  'js/core.js', 'js/sync.js', 'js/data.program.js', 'js/data.diet.js', 'js/data.exercises.js', 'js/data.nutrition.js', 'js/engine.js', 'js/charts.js',
   'js/ocr.js', 'js/alarm.js', 'js/ui.js', 'js/ui.home.js', 'js/ui.plan.js', 'js/ui.session.js', 'js/ui.lib.js',
   'js/ui.food.js', 'js/ui.body.js', 'js/ui.rec.js', 'js/app.js',
   'vendor/fonts/wanted-sans/WantedSansVariable.css', 'vendor/fonts/chakra-petch/chakra-petch.css',
@@ -49,6 +49,6 @@ self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cs) => {
     for (const c of cs) { if ('focus' in c) return c.focus(); }
-    return self.clients.openWindow('./#/home');
+    return self.clients.openWindow('./#home');
   }));
 });
