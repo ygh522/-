@@ -31,46 +31,66 @@ window.F = window.F || {};
       preWorkout: gt != null ? gt - 30 : null, postWorkout: gt != null ? gt + 80 : null, bed: ds.bed - 30,
     };
   };
-  /** Place each supplement the member takes at its best slot, keeping "don't take together" pairs apart. */
+  const WORKOUT_SLOTS = ['preWorkout', 'postWorkout'];
+  const baseId = (key) => String(key).split('#')[0];
+  /** Place each supplement at its best slot. Entries: {id, key, dose, slot, at, moved}.
+      "Don't take together" pairs stay apart, two-dose (split) items get a second reminder,
+      workout-only items skip rest days and a caffeine booster skips workouts close to bedtime. */
   E.suppSchedule = (k) => {
     const T = E.slotTimes(k);
+    const ds = E.daySettings();
     const gym = !!E.planFor(k);
     const placed = [];
-    for (const m of (F.S.mySupps || []).filter((x) => x.on !== false)) {
-      const info = E.suppInfo(m.id); if (!info) continue;
-      let cands = [];
-      if (m.slot) cands.push(m.slot);
-      if (gym && info.gymSlot) cands.push(info.gymSlot);
-      cands = cands.concat(info.slots || [], ['breakfast', 'lunch', 'dinner']).filter((s2, i, a) => a.indexOf(s2) === i && T[s2] != null);
+    const place = (m, info, cands, dose) => {
+      cands = cands.filter((s2, i, arr) => s2 && arr.indexOf(s2) === i && T[s2] != null);
       let chosen = null;
       for (const sl of cands) {
         const at = T[sl];
-        const clash = placed.some((p) => {
-          const pi = E.suppInfo(p.id) || {};
-          const conflict = (info.avoid || []).includes(p.id) || (pi.avoid || []).includes(m.id);
+        const clash = placed.some((p2) => {
+          if (p2.id === m.id) return Math.abs(p2.at - at) < 120;
+          const pi = E.suppInfo(p2.id) || {};
+          const conflict = (info.avoid || []).includes(p2.id) || (pi.avoid || []).includes(m.id);
           const gap = Math.max(info.gapHours || 0, pi.gapHours || 0) * 60;
-          return conflict && Math.abs(p.at - at) < Math.max(gap, 1);
+          return conflict && Math.abs(p2.at - at) < Math.max(gap, 1);
         });
-        if (!clash) { chosen = { id: m.id, slot: sl, at, moved: sl !== cands[0] }; break; }
+        if (!clash) { chosen = { slot: sl, at, moved: sl !== cands[0] }; break; }
       }
-      if (!chosen && cands.length) chosen = { id: m.id, slot: cands[0], at: T[cands[0]], clash: true };
-      if (chosen) placed.push(chosen);
+      if (!chosen && cands.length && dose === 1) chosen = { slot: cands[0], at: T[cands[0]], clash: true };
+      if (chosen) placed.push(Object.assign({ id: m.id, key: dose === 2 ? `${m.id}#2` : m.id, dose }, chosen));
+      return chosen;
+    };
+    for (const m of (F.S.mySupps || []).filter((x) => x.on !== false)) {
+      const info = E.suppInfo(m.id); if (!info) continue;
+      const slots = info.slots || [];
+      if (E.suppSkip(m, info, T, ds, gym)) continue;
+      const first = place(m, info, [m.slot, gym ? info.gymSlot : null].concat(slots, ['breakfast', 'lunch', 'dinner']), 1);
+      if (info.split && !m.slot && first) {
+        const second = slots.find((s2) => s2 !== first.slot) || (first.slot === 'dinner' ? 'lunch' : 'dinner');
+        place(m, info, [second, 'dinner', 'lunch', 'breakfast'].filter((s2) => s2 !== first.slot), 2);
+      }
     }
-    return placed.sort((a, b) => a.at - b.at);
+    return placed.sort((a2, b2) => a2.at - b2.at);
+  };
+  /** Why a supplement has no reminder today ('' when it has one). */
+  E.suppSkip = (m, info, T, ds, gym) => {
+    const slots = info.slots || [];
+    if (!gym && !m.slot && slots.length && slots.every((s2) => WORKOUT_SLOTS.includes(s2))) return '운동하는 날에만 알려 드려요';
+    if (m.id === 'preworkout' && T.preWorkout != null && ds.bed - T.preWorkout < 360) return '잠들기 6시간 안쪽의 운동이라 오늘은 카페인 부스터를 건너뛰어요';
+    return '';
   };
   const groupsOf = (list) => {
     const g = {};
     for (const p of list) (g[p.at] = g[p.at] || []).push(p);
-    return Object.entries(g).map(([at, ps]) => ({ at: +at, ids: ps.map((p) => p.id), slot: ps[0].slot })).sort((a, b) => a.at - b.at);
+    return Object.entries(g).map(([at, ps]) => ({ at: +at, ids: ps.map((p) => p.id), keys: ps.map((p) => p.key), slot: ps[0].slot })).sort((a2, b2) => a2.at - b2.at);
   };
   /** What is due now / missed / next for the reminder banner. */
   E.suppDue = (k) => {
     const now = F.nowMin();
     const taken = F.S.supp[k] || {};
-    const list = groupsOf(E.suppSchedule(k).filter((p) => !taken[p.id]));
+    const list = groupsOf(E.suppSchedule(k).filter((p) => !taken[p.key]));
     return { soon: list.find((g) => now >= g.at - 30 && now <= g.at + 90) || null, missed: list.filter((g) => now > g.at + 90), next: list.find((g) => g.at > now) || null, all: list };
   };
-  const names = (ids) => ids.map((id) => (E.suppInfo(id) || { name: id }).name).join(' · ');
+  const names = (ids) => ids.map((id) => (E.suppInfo(baseId(id)) || { name: id }).name).filter((v, i, arr) => arr.indexOf(v) === i).join(' · ');
 
   /* =========================================================
      THE DAY PLAN — one timeline the trainer walks you through
@@ -94,15 +114,15 @@ window.F = window.F || {};
     items.push({ kind: 'bed', at: ds.bed, title: '잠자리', sub: '7시간 이상 자야 근육이 회복돼요' });
     for (const g of groupsOf(E.suppSchedule(k))) {
       const host = items.find((it) => it.at === g.at && (it.kind === 'meal' || it.kind === 'wake'));
-      const done = g.ids.every((id) => taken[id]);
-      if (host) Object.assign(host, { supps: g.ids, suppSlot: g.slot, suppDone: done });
-      else items.push({ kind: 'supp', at: g.at, supps: g.ids, suppSlot: g.slot, title: '영양제', done });
+      const done = g.keys.every((key) => taken[key]);
+      if (host) Object.assign(host, { supps: g.ids, suppKeys: g.keys, suppSlot: g.slot, suppDone: done });
+      else items.push({ kind: 'supp', at: g.at, supps: g.ids, suppKeys: g.keys, suppSlot: g.slot, title: '영양제', done });
     }
     const ord = { wake: 0, supp: 1, meal: 2, workout: 3, bed: 4 };
     return items.sort((a, b) => a.at - b.at || ord[a.kind] - ord[b.kind]);
   };
 
-  const suppLine = (ids, slot, done) => `<div class="tl-supp ${done ? 'ok' : ''}">${F.icon('pill', 'sm')}<span><b>${esc(names(ids))}</b> · ${esc(slotLabel(slot))}</span>${done ? F.icon('check', 'sm') : `<button class="t-xs link" data-act="supp-take" data-ids="${ids.join(',')}">먹었어요</button>`}</div>`;
+  const suppLine = (it, done) => `<div class="tl-supp ${done ? 'ok' : ''}">${F.icon('pill', 'sm')}<span><b>${esc(names(it.supps))}</b> · ${esc(slotLabel(it.suppSlot))}</span>${done ? F.icon('check', 'sm') : `<button class="t-xs link" data-act="supp-take" data-ids="${it.suppKeys.join(',')}">먹었어요</button>`}</div>`;
   /** The day's timeline. compact = PC dashboard cell. */
   UI.timeline = (k, compact) => {
     k = k || F.today();
@@ -123,7 +143,7 @@ window.F = window.F || {};
         body = `<div class="tl-h"><b>${esc(it.title)}</b><span class="t-xs mute">${esc(x.note || '')}</span></div>
           <div class="tl-s"><b>${esc(x.m.name)}</b> <span class="t-num mute">${x.por.kcal}kcal · ${x.por.p}g</span></div>
           ${compact ? '' : `<div class="t-xs mute2">${esc((x.por.items || []).join(' · '))}</div>`}
-          ${it.supps ? suppLine(it.supps, it.suppSlot, it.suppDone) : ''}
+          ${it.supps ? suppLine(it, it.suppDone) : ''}
           <div class="tl-a"><button class="chk ${it.done ? 'on' : ''}" data-act="diet-ate" data-k="${k}" data-slot="${x.slot}">${F.icon('check', 'sm')}${it.done ? '먹었어요' : '먹으면 체크'}</button>${nextId ? `<button class="t-xs link" data-act="diet-pick" data-k="${k}" data-slot="${x.slot}" data-id="${nextId}">다른 메뉴 ›</button>` : ''}</div>`;
       } else if (it.kind === 'workout') {
         const T = F.TEMPLATES[it.tid] || {};
@@ -131,9 +151,9 @@ window.F = window.F || {};
           <div class="tl-s">${esc(F.E.templateEx(it.tid).slice(0, 3).map((id) => F.EXERCISES[id].name).join(' · '))} 외</div>
           <div class="tl-a">${it.done ? `<span class="pill-ok">출석 완료</span>` : `<button class="btn sm primary" data-act="start-session" data-date="${k}">${F.icon('play', 'sm')}운동 시작</button><a class="t-xs link" href="#plan">루틴 보기 ›</a>`}</div>`;
       } else if (it.kind === 'supp') {
-        body = `<div class="tl-h"><b>영양제</b><span class="t-xs mute">${esc(slotLabel(it.suppSlot))}</span></div>${suppLine(it.supps, it.suppSlot, it.done)}`;
+        body = `<div class="tl-h"><b>영양제</b><span class="t-xs mute">${esc(slotLabel(it.suppSlot))}</span></div>${suppLine(it, it.done)}`;
       } else {
-        body = `<div class="tl-h"><b>${esc(it.title)}</b></div><div class="tl-s mute2">${esc(it.sub)}</div>${it.supps ? suppLine(it.supps, it.suppSlot, it.suppDone) : ''}`;
+        body = `<div class="tl-h"><b>${esc(it.title)}</b></div><div class="tl-s mute2">${esc(it.sub)}</div>${it.supps ? suppLine(it, it.suppDone) : ''}`;
       }
       out.push(`<div class="tl-i k-${it.kind} ${past ? 'past' : ''} ${it.done || it.suppDone ? 'done' : ''}"><div class="tl-t t-num">${F.minToTime(it.at)}</div><div class="tl-b">${body}</div></div>`);
     }
@@ -151,11 +171,11 @@ window.F = window.F || {};
     const now = F.nowMin();
     const g = due.soon || (due.missed.length ? due.missed[due.missed.length - 1] : null);
     if (!g) return '';
-    const info = E.suppInfo(g.ids[0]) || {};
+    const info = E.suppInfo(baseId(g.ids[0])) || {};
     const msg = g.at > now ? `곧 ${names(g.ids)} 섭취 시간이에요` : due.soon === g ? `지금 ${names(g.ids)} 드실 시간이에요` : `아직 ${names(g.ids)} 안 드셨어요`;
     return `<div class="sbanner ${g.at <= now ? 'now' : ''}"><div class="sb-ic">${F.icon('pill')}</div>
       <div class="grow"><b>${esc(msg)}</b><span class="t-xs">${F.minToTime(g.at)} · ${esc(slotLabel(g.slot))}${info.withFood === false ? ' · 공복에' : ''}</span></div>
-      <button class="btn sm white" data-act="supp-take" data-ids="${g.ids.join(',')}">먹었어요</button></div>`;
+      <button class="btn sm white" data-act="supp-take" data-ids="${g.keys.join(',')}">먹었어요</button></div>`;
   };
 
   /** Trainer card: greeting, today's coaching line and quick questions. */
@@ -190,7 +210,7 @@ window.F = window.F || {};
     const k = F.today();
     const r = (F.S.supp[k] = F.S.supp[k] || {});
     const ids = String(el.dataset.ids || '').split(',').filter(Boolean);
-    for (const id of ids) if (!r[id]) { r[id] = Date.now(); E.addXP(`supp:${id}:${k}`, 2, `${(E.suppInfo(id) || {}).name || id} 섭취`); }
+    for (const key of ids) if (!r[key]) { r[key] = Date.now(); E.addXP(`supp:${key}:${k}`, 2, `${(E.suppInfo(baseId(key)) || {}).name || key} 섭취`); }
     F.save();
     F.toast(`${names(ids)} 섭취 완료! 꾸준함이 제일 중요해요`);
     UI.refresh();
@@ -228,18 +248,22 @@ window.F = window.F || {};
     const mine = s.mySupps || [];
     const sched = E.suppSchedule(k);
     const taken = s.supp[k] || {};
-    const at = (id) => sched.find((p) => p.id === id);
+    const T = E.slotTimes(k), ds = E.daySettings(), gym = !!E.planFor(k);
     const today = groupsOf(sched).map((g) => `<div class="sgroup"><div class="t-num-m">${F.minToTime(g.at)}</div><div class="grow"><div class="t-xs mute">${esc(slotLabel(g.slot))}</div>
-        ${g.ids.map((id) => `<button class="sitem ${taken[id] ? 'on' : ''}" data-act="${taken[id] ? 'supp-untake' : 'supp-take'}" data-id="${id}" data-ids="${id}">${F.icon('check', 'sm')}<span>${esc((E.suppInfo(id) || {}).name || id)}</span></button>`).join('')}</div></div>`).join('');
+        ${g.keys.map((key, i) => `<button class="sitem ${taken[key] ? 'on' : ''}" data-act="${taken[key] ? 'supp-untake' : 'supp-take'}" data-id="${key}" data-ids="${key}">${F.icon('check', 'sm')}<span>${esc((E.suppInfo(g.ids[i]) || {}).name || g.ids[i])}${key.includes('#2') ? ' (2회차)' : ''}</span></button>`).join('')}</div></div>`).join('');
     const cards = mine.map((m) => {
       const info = E.suppInfo(m.id) || { name: m.id };
-      const p = at(m.id);
+      const ps = sched.filter((x) => x.id === m.id);
+      const p = ps[0];
+      const skip = E.suppSkip(m, info, T, ds, gym);
       const slots = Object.keys(SLOTS());
       return `<article class="scard ${m.on === false ? 'off' : ''}">
         <div class="row between"><div><span class="tag">${esc(info.cat || '')}</span> <b class="t-h3">${esc(info.name)}</b></div>
           <button class="t-xs link" data-act="supp-remove" data-id="${m.id}">삭제</button></div>
-        <div class="row wrap" style="gap:8px;margin-top:8px;align-items:center"><span class="t-num-m">${p ? F.minToTime(p.at) : '--:--'}</span>
+        <div class="row wrap" style="gap:8px;margin-top:8px;align-items:center"><span class="t-num-m">${ps.length ? ps.map((x) => F.minToTime(x.at)).join(' · ') : '--:--'}</span>
           <select class="input sm" data-change="supp-slot" data-id="${m.id}" aria-label="먹는 시간"><option value="">추천 시간 (${esc(slotLabel((info.slots || ['breakfast'])[0]))})</option>${slots.map((sl) => `<option value="${sl}" ${m.slot === sl ? 'selected' : ''}>${esc(slotLabel(sl))}</option>`).join('')}</select></div>
+        ${skip ? `<p class="t-xs" style="margin-top:6px"><b>${esc(skip)}</b></p>` : ''}
+        ${ps.length > 1 ? `<p class="t-xs" style="margin-top:6px"><b>한 번에 많이 먹는 것보다 두 번에 나눠야 흡수가 잘 돼서 두 번 알려 드려요.</b></p>` : ''}
         ${p && p.moved ? `<p class="t-xs" style="margin-top:6px"><b>함께 먹으면 안 되는 영양제와 시간을 띄웠어요.</b></p>` : ''}
         ${info.dose ? `<p class="t-small" style="margin-top:8px"><b>얼마나</b> ${esc(info.dose)}</p>` : ''}
         ${info.timing ? `<p class="t-small" style="margin-top:4px"><b>언제</b> ${esc(info.timing)}</p>` : ''}

@@ -55,7 +55,7 @@ window.F = window.F || {};
 
     const mine = F.S.mySupps || [];
     const mySupp = mine.length && F.E.suppSchedule
-      ? `<div class="list">${F.E.suppSchedule(k).map((p) => { const info = F.E.suppInfo(p.id) || {}; const on = !!(F.S.supp[k] || {})[p.id]; return `<div><span class="t-num" style="width:48px">${F.minToTime(p.at)}</span><span class="grow"><b>${esc(info.name || p.id)}</b> <span class="t-xs mute">${esc(((F.SUPP_SLOTS || {})[p.slot] || {}).label || '')}</span></span><button class="check ${on ? 'on' : ''}" data-act="${on ? 'supp-untake' : 'supp-take'}" data-id="${p.id}" data-ids="${p.id}" aria-label="${esc(info.name || '')} 섭취">${F.icon('check')}</button></div>`; }).join('')}</div>`
+      ? `<div class="list">${F.E.suppSchedule(k).map((p) => { const info = F.E.suppInfo(p.id) || {}; const on = !!(F.S.supp[k] || {})[p.key]; return `<div><span class="t-num" style="width:48px">${F.minToTime(p.at)}</span><span class="grow"><b>${esc(info.name || p.id)}${p.dose === 2 ? ' (2회차)' : ''}</b> <span class="t-xs mute">${esc(((F.SUPP_SLOTS || {})[p.slot] || {}).label || '')}</span></span><button class="check ${on ? 'on' : ''}" data-act="${on ? 'supp-untake' : 'supp-take'}" data-id="${p.key}" data-ids="${p.key}" aria-label="${esc(info.name || '')} 섭취">${F.icon('check')}</button></div>`; }).join('')}</div>`
       : `<a class="tl-add" href="#supp">${F.icon('pill', 'sm')}<span>가지고 있는 영양제를 등록하면 먹을 시간까지 챙겨 드려요</span>${F.icon('chevR', 'sm')}</a>`;
     const left = `${nav}${UI.dietStyle ? `<div class="t-label mute" style="margin:2px 0 6px">식단 스타일 · 끼니마다 고르는 메뉴의 기본값</div>${UI.dietStyle()}` : ''}${target}${meals}`;
     const right = `<section class="sec" style="margin-top:0">${UI.secH('3 RULES', '이것만 지켜요', '')}${rules}</section>
