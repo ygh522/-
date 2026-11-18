@@ -137,7 +137,8 @@ a { color: inherit; text-decoration: none; }
 .cell-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 .cell-h .t-label { color: var(--ink-3); }
 .cell-h a, .cell-h button { font-size: 12px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
-.split { display: grid; gap: 0; }
+.split { display: grid; gap: 0; grid-template-columns: minmax(0, 1fr); }
+.split > section { min-width: 0; }
 [data-mode="pc"] .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--line); }
 [data-mode="pc"] .split > section { padding: 20px; border-right: 1px solid var(--line); min-width: 0; }
 [data-mode="pc"] .split > section:last-child { border-right: 0; }

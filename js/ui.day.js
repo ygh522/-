@@ -378,7 +378,7 @@ window.F = window.F || {};
      ========================================================= */
   const inClaude = () => !!(window.claude && typeof window.claude.use === 'function');
   const allVids = () => (F.HOMEFIT || []).concat(((F.RECO || {}).videos || []).filter((v) => v.id && !(F.HOMEFIT || []).some((h) => h.id === v.id)));
-  const catLabel = (c) => ((F.HOMEFIT_CATS || []).find((x) => x.id === c) || { label: c || '추가 추천' }).label;
+  const catLabel = (c) => ((F.HOMEFIT_CATS || []).find((x) => x.id === c) || { label: '추가 추천 · 비(정지훈) · 걷기 · 버피' }).label;
   const viewsLabel = (n) => (n ? `${F.num(n)}만 회` : '');
   const ytUrl = (id) => `https://www.youtube.com/watch?v=${id}`;
   let hf = { cat: 'all', quiet: false, short: false };
@@ -396,16 +396,17 @@ window.F = window.F || {};
   const brokenThumbs = (root) => (root || document).querySelectorAll('img.yt').forEach((img) => img.addEventListener('error', () => img.remove(), { once: true }));
   V.homefit = () => {
     const vids = allVids();
-    const cats = (F.HOMEFIT_CATS || []).filter((c) => vids.some((v) => v.cat === c.id));
+    const cats = (F.HOMEFIT_CATS || []).filter((c) => vids.some((v) => v.cat === c.id)).concat(vids.some((v) => v.cat === 'more') ? [{ id: 'more', label: '추가 추천', en: 'MORE' }] : []);
     const list = vids.filter((v) => (hf.cat === 'all' || v.cat === hf.cat) && (!hf.quiet || v.quiet) && (!hf.short || (v.min && v.min <= 10)));
-    const groups = (hf.cat === 'all' ? cats.map((c) => c.id) : [hf.cat]).map((cid) => ({ cid, items: list.filter((v) => v.cat === cid).sort((a, b) => (b.views || 0) - (a.views || 0)) })).filter((g) => g.items.length);
-    const extra = list.filter((v) => !cats.some((c) => c.id === v.cat));
+    const groups = (hf.cat === 'all' ? cats.map((c) => c.id) : [hf.cat]).map((cid) => ({ cid, items: cid === 'more' ? list.filter((v) => v.cat === cid) : list.filter((v) => v.cat === cid).sort((a, b) => (b.views || 0) - (a.views || 0)) })).filter((g) => g.items.length);
+    const extra = [];
     const html = `<div class="page">${UI.ph('HOME TRAINING', '홈트 영상', `헬스장에 못 가는 날을 위한 국내 홈트 레전드 루틴만 모았어요. ${inClaude() ? 'claude.ai 안에서는 영상이 유튜브로 열려요.' : '누르면 앱 안에서 가로 전체화면으로 바로 재생돼요.'}`)}
       <div class="chips">${[['all', '전체']].concat(cats.map((c) => [c.id, c.label])).map(([id, l]) => `<button class="chip ${hf.cat === id ? 'on' : ''}" data-act="hf-cat" data-v="${id}">${esc(l)}</button>`).join('')}</div>
       <div class="chips" style="margin-top:8px"><button class="chip ${hf.quiet ? 'on' : ''}" data-act="hf-toggle" data-k="quiet">${F.icon('check', 'sm')}층간소음 걱정 없음</button><button class="chip ${hf.short ? 'on' : ''}" data-act="hf-toggle" data-k="short">${F.icon('clock', 'sm')}10분 이하</button></div>
       ${groups.map((g) => `<section class="sec">${UI.secH(((F.HOMEFIT_CATS || []).find((c) => c.id === g.cid) || {}).en || '', `${esc(catLabel(g.cid))} <span class="t-num mute" style="font-size:14px">${g.items.length}</span>`, '')}<div class="vgrid">${g.items.map((v) => vcard(v)).join('')}</div></section>`).join('')}
       ${extra.length ? `<section class="sec">${UI.secH('MORE', '추가 추천', '')}<div class="vgrid">${extra.map((v) => vcard(v)).join('')}</div></section>` : ''}
       ${!list.length ? '<div class="empty" style="margin-top:14px">조건에 맞는 영상이 없어요. 필터를 바꿔 보세요.</div>' : ''}
+      ${((F.RECO || {}).channels || []).length ? `<section class="sec">${UI.secH('CHANNELS', '구독해 두면 좋은 채널', '')}<div class="chans">${F.RECO.channels.map((c) => `<a class="chan" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer"><b>${esc(c.name)} ↗</b><span class="t-xs mute2">${esc(c.why || '')}</span></a>`).join('')}</div></section>` : ''}
       <p class="t-xs mute" style="margin-top:14px">처음엔 영상 속도를 다 따라가지 말고, 자세가 무너지면 쉬었다 가요. 무릎 · 허리가 아프면 점프 동작은 빼고 같은 동작을 제자리에서 천천히 해요. 조회수는 영상 소개 기준이에요.</p></div>`;
     return { html, after: (root) => brokenThumbs(root) };
   };

@@ -23,7 +23,7 @@ F.HOMEFIT = [
   { id: 'fbYu5yzo4lc', cat: 'cardio', ch: '빅씨스', title: '땀폭발 타바타 홈트 신나고 경쾌한 10분 다이어트 운동', views: 261, min: 10, level: '초급', quiet: false, desc: '활기찬 텐션으로 짧게 체지방을 태우는 10분 타바타예요.' },
   { id: 'SKhWeSRI8j4', cat: 'cardio', ch: '에이핏', title: '초특급 울트라 전신 유산소 운동 HIIT + 복근운동', views: 247, min: 30, level: '중급', quiet: false, desc: '30분간 반복 동작 없이 고강도 인터벌과 복근 운동을 결합한 루틴이에요.' },
 
-  { id: '2Uv1B3kjCOI', cat: 'core', ch: '땅끄부부', title: '아랫뱃살 똥배 빼는 최고의 운동', views: 2268, min: 10, level: '초급', quiet: true, desc: '매트에 누워 아랫배를 집중해서 다지는 국민 뱃살 루틴이에요.' },
+  { id: '2Uv1B3kjCOI', cat: 'core', ch: '땅끄부부', title: '아랫뱃살 똥배 폭파 운동', views: 2268, min: 10, level: '초급', quiet: true, desc: '매트에 누워 아랫배를 집중해서 다지는 국민 뱃살 루틴이에요.' },
   { id: 'A8FhYFw5RAg', cat: 'core', ch: '올블랑 TV', title: '섹시 식스팩 2주만에 만들기 4분 타바타', views: 919, min: 4, level: '중급', quiet: true, desc: '4분 만에 윗배 · 아랫배 · 옆구리를 강하게 쥐어짜는 초단기 복근 타바타예요.' },
   { id: '0iqP6WP2ET4', cat: 'core', ch: 'MIZI', title: '뱃살빼기! 효과보장!! 15MIN STANDING ABS WORKOUT', views: 835, min: 15, level: '입문', quiet: false, desc: '바닥에 눕지 않고 15분간 서서 코어와 옆구리를 단련하는 복부 유산소예요.' },
   { id: 'QSZ0mUGO_CA', cat: 'core', ch: '힙으뜸', title: '(층간소음X, 설명O) 짧고 굵게 복근만들기 2주 챌린지', views: 797, min: 9, level: '초급', quiet: true, desc: '목 통증 없이 복근에만 정확히 힘을 주는 법을 9분 동안 코칭해 줘요.' },
