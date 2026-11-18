@@ -1,4 +1,4 @@
-/* MY PT v2 — black & white, angular, simple. Point color only for what matters.
+/* 트쌤 (T-SAM) — black & white, angular, simple. Point color only for what matters.
    Korean UI: Wanted Sans · Numbers & micro labels: Chakra Petch
    Modes: [data-mode="mobile"] portrait, gym execution · [data-mode="pc"] 16:9 information dashboard */
 :root {
@@ -95,7 +95,6 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Shell ---------- */
 .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; height: var(--top-h); display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 var(--pad); background: var(--bg); border-bottom: 1px solid var(--line); }
 .logo { display: flex; align-items: center; gap: 8px; font-family: var(--num); font-weight: 700; font-size: 19px; letter-spacing: .02em; }
-.logo i { width: 11px; height: 11px; background: var(--ink); display: inline-block; }
 .top-right { display: flex; align-items: center; gap: 4px; }
 .who { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px 0 4px; border: 1px solid var(--line); font-weight: 800; font-size: 13px; max-width: 46vw; }
 .who img { width: 26px; height: 26px; object-fit: cover; filter: grayscale(1); }
@@ -120,7 +119,6 @@ a { color: inherit; text-decoration: none; }
 [data-mode="pc"] .topbar { margin-left: 220px; justify-content: flex-end; }
 [data-mode="pc"] .topbar .logo { display: none; }
 [data-mode="pc"] .tabbar { top: 0; bottom: 0; right: auto; width: 220px; height: auto; display: flex; flex-direction: column; padding: 18px 0; gap: 2px; border-top: 0; border-right: 1px solid var(--line); }
-[data-mode="pc"] .tabbar::before { content: "MY PT"; font-family: var(--num); font-weight: 700; font-size: 24px; padding: 0 22px 22px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
 [data-mode="pc"] .tabbar a { flex-direction: row; justify-content: flex-start; gap: 14px; padding: 11px 22px; font-size: 15px; color: var(--ink-2); }
 [data-mode="pc"] .tabbar a.on { color: var(--inv); background: var(--ink); }
 [data-mode="pc"] .tabbar a.on::before { display: none; }
@@ -802,3 +800,123 @@ details.acc > div { padding-bottom: 12px; }
 .pc-list.con .ic { color: var(--ink-3); }
 
 [hidden] { display: none !important; }
+
+/* ---------- Brand: 트쌤 ---------- */
+.logo { display: flex; align-items: center; gap: 8px; }
+.logo .lg-mark { width: 28px; height: 28px; flex: none; display: grid; place-items: center; background: var(--ink); color: var(--inv); }
+.logo .lg-mark svg { width: 22px; height: 22px; fill: currentColor; }
+.logo b { font-family: var(--font); font-weight: 900; font-size: 21px; letter-spacing: -0.05em; line-height: 1; }
+.logo.big { flex-wrap: wrap; gap: 10px; }
+.logo.big .lg-mark { width: 40px; height: 40px; }
+.logo.big .lg-mark svg { width: 32px; height: 32px; }
+.logo.big b { font-size: 28px; }
+.logo .lg-sub { flex-basis: 100%; display: grid; gap: 2px; font-size: 12px; font-weight: 700; color: var(--ink-2); line-height: 1.35; }
+.logo .lg-sub .t-label { color: var(--ink-3); }
+.side-brand { display: none; }
+[data-mode="pc"] .side-brand { display: block; padding: 0 22px 18px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+[data-mode="pc"] .tabbar a.side-brand { height: auto; }
+.boot .logo { margin-bottom: 8px; }
+
+/* =========================================================
+   V4 — 1:1 day plan, supplements, diet styles, picks, home workouts
+   ========================================================= */
+/* trainer card */
+.coachcard { border: 1px solid var(--line); padding: 14px; background: var(--surface); }
+.cc-top { display: flex; gap: 12px; align-items: flex-start; }
+.cc-top img { width: 64px; height: 80px; object-fit: cover; object-position: top; background: #fff; flex: none; border: 1px solid var(--line-soft); }
+.coachcard.compact .cc-top img { width: 48px; height: 48px; }
+.cc-say { min-width: 0; display: grid; gap: 3px; }
+.cc-say .t-label { color: var(--ink-3); }
+.cc-say b { font-size: 18px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.3; }
+.cc-say p { font-size: 14px; font-weight: 600; color: var(--ink-2); line-height: 1.5; }
+.cc-q { margin-top: 12px; }
+.cc-q .chip { height: auto; min-height: 34px; padding: 6px 10px; white-space: normal; text-align: left; }
+.cc-in { display: flex; gap: 6px; margin-top: 10px; }
+.cc-in .input { flex: 1; min-width: 0; height: 46px; font-size: 15px; font-weight: 600; }
+.cc-in .btn { min-width: 50px; padding: 0; min-height: 46px; }
+
+/* supplement banner */
+.sbanner { display: flex; gap: 12px; align-items: center; margin-top: 12px; padding: 12px 14px; background: var(--ink); color: var(--inv); }
+.sbanner.now { box-shadow: inset 4px 0 0 var(--hot); }
+.sbanner .sb-ic { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border: 1px solid #444; }
+.sbanner b { display: block; font-size: 15px; font-weight: 800; line-height: 1.35; }
+.sbanner .t-xs { display: block; color: #A8A8A8; margin-top: 2px; line-height: 1.45; }
+.sbanner .grow { min-width: 0; }
+
+/* the day timeline */
+.tl { position: relative; }
+.tl-i { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; position: relative; padding: 0 0 14px; }
+.tl-i::before { content: ""; position: absolute; left: 25px; top: 22px; bottom: 0; width: 1px; background: var(--line-soft); }
+.tl-i:last-child::before { display: none; }
+.tl-t { font-size: 14px; font-weight: 700; padding-top: 2px; }
+.tl-b { border: 1px solid var(--line-soft); padding: 10px 12px; min-width: 0; background: var(--surface); }
+.tl-h { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.tl-h b { font-size: 15px; font-weight: 800; }
+.tl-s { font-size: 14px; margin-top: 2px; }
+.tl-s .t-num { font-size: 12px; }
+.tl-a { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.tl-supp { display: flex; gap: 6px; align-items: center; margin-top: 8px; padding: 7px 9px; background: var(--surface-2); font-size: 13px; }
+.tl-supp span { flex: 1; min-width: 0; }
+.tl-supp.ok { opacity: .6; }
+.chk { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border: 1px solid var(--line); font-size: 12px; font-weight: 800; }
+.chk.on { background: var(--ink); color: var(--inv); }
+.tl-i.k-workout .tl-b { border-color: var(--ink); border-width: 2px; }
+.tl-i.k-wake .tl-b, .tl-i.k-bed .tl-b { background: transparent; border-style: dashed; }
+.tl-i.past:not(.done) .tl-t { color: var(--ink-3); }
+.tl-i.done .tl-b { background: var(--surface-2); }
+.tl-i.done .tl-h b::after { content: " ✓"; }
+.tl-now { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: center; margin: -4px 0 10px; }
+.tl-now .t-num { font-size: 12px; font-weight: 700; color: var(--hot); }
+.tl-now i { height: 2px; background: var(--hot); position: relative; }
+.tl-now i::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; background: var(--hot); }
+.tl.compact .tl-i { grid-template-columns: 44px minmax(0, 1fr); padding-bottom: 8px; }
+.tl.compact .tl-i::before { left: 21px; }
+.tl.compact .tl-b { padding: 7px 10px; }
+.tl.compact .tl-now { grid-template-columns: 44px minmax(0, 1fr); }
+.tl-add { display: flex; gap: 8px; align-items: center; margin-top: 8px; padding: 12px; border: 1px dashed var(--line); font-size: 13px; font-weight: 700; }
+.tl-add span { flex: 1; }
+
+/* diet styles */
+.dstyle { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); margin-bottom: 14px; }
+.dstyle button { text-align: left; padding: 9px 10px; display: grid; gap: 2px; min-width: 0; }
+.dstyle button + button { border-left: 1px solid var(--line-soft); }
+.dstyle b { font-size: 13px; font-weight: 800; }
+.dstyle span { font-size: 11px; color: var(--ink-3); line-height: 1.3; }
+.dstyle button.on { background: var(--ink); color: var(--inv); }
+.dstyle button.on span { color: #A8A8A8; }
+@media (max-width: 520px) { .dstyle { grid-template-columns: 1fr 1fr; } .dstyle button:nth-child(3) { border-left: 0; } .dstyle button:nth-child(n+3) { border-top: 1px solid var(--line-soft); } }
+
+/* product picks */
+.prods { border-top: 1px solid var(--line-soft); }
+.prod { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.ext { flex: none; font-size: 12px; font-weight: 800; padding: 6px 10px; border: 1px solid var(--line); white-space: nowrap; }
+.ext:hover { background: var(--ink); color: var(--inv); }
+
+/* home workouts */
+.vgrid { display: grid; gap: 10px; margin-top: 12px; }
+[data-mode="pc"] .vgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.vcard { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line-soft); min-width: 0; }
+.vcard:hover { border-color: var(--ink); }
+.vc-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.vc-title { font-size: 16px; font-weight: 800; line-height: 1.35; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.vc-go { margin-top: auto; display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 800; }
+.chans { display: grid; gap: 8px; }
+[data-mode="pc"] .chans { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.chan { display: grid; gap: 2px; padding: 12px; border: 1px solid var(--line-soft); }
+
+/* my supplements */
+.sgroup { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.sgroup .t-num-m { width: 58px; flex: none; }
+.sitem { display: inline-flex; gap: 6px; align-items: center; margin: 6px 6px 0 0; padding: 8px 12px; border: 1px solid var(--line); font-weight: 800; font-size: 14px; }
+.sitem .ic { opacity: .25; }
+.sitem.on { background: var(--ink); color: var(--inv); }
+.sitem.on .ic { opacity: 1; }
+.scards { display: grid; gap: 10px; }
+.scard { border: 1px solid var(--line-soft); padding: 14px; }
+.scard.off { opacity: .5; }
+.input.sm { height: 36px; font-size: 13px; padding: 0 8px; width: auto; max-width: 100%; }
+.coach-mini { display: flex; gap: 10px; align-items: flex-start; }
+.coach-mini img { width: 44px; height: 44px; object-fit: cover; object-position: top; flex: none; background: #fff; }
+.coach-mini b { display: block; font-size: 12px; color: var(--ink-3); }
+.coach-mini p { font-size: 14px; font-weight: 600; line-height: 1.55; }
+.callout.hot { color: var(--ink); }

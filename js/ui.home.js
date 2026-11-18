@@ -62,7 +62,7 @@ window.F = window.F || {};
           <div class="list"><div><span class="num-idx">01</span><span class="grow">가볍게 걷기 30분 (8,000보)</span></div>
           <div><span class="num-idx">02</span><span class="grow">단백질 ${tg.protein}g — 매 끼니 손바닥 1개</span></div>
           <div><span class="num-idx">03</span><span class="grow">물 8컵 · 7시간 이상 수면</span></div></div></div>
-        <div style="padding:12px var(--pad) 0"><button class="btn block" data-act="start-free">${F.icon('plus')}오늘 추가로 운동하기</button></div>`;
+        <div class="btn-row" style="padding:12px var(--pad) 0"><a class="btn" href="#homefit">${F.icon('play', 'sm')}집에서 홈트 영상</a><button class="btn" data-act="start-free">${F.icon('plus', 'sm')}헬스장 추가 운동</button></div>`;
     }
     const strip = `<div class="weekstrip">${week.map((w) => `<a class="wd ${w.k === k ? 'today' : ''}" href="#plan"><span class="t-label">${F.DAY_EN[w.dow]}</span><span class="dn">${F.parseKey(w.k).getDate()}</span>${UI.stamp(w.status === 'today' ? 'today' : w.status)}</a>`).join('')}</div>
       <div class="row wrap t-xs" style="margin-top:8px;gap:6px"><span class="${ws.done >= ws.freq ? 'pill-ok' : 'tag'}">이번 주 ${ws.done}/${ws.freq}회</span><span class="${ws.weekdayOk ? 'pill-ok' : 'tag'}">주중 ${ws.weekdayDone}/2회</span>${F.E.streakWeeks() ? `<span class="tag line">${F.E.streakWeeks()}주 연속</span>` : ''}</div>`;
@@ -77,8 +77,9 @@ window.F = window.F || {};
         <a href="#rec"><span class="grow"><b>레벨</b> <span class="mute t-small">Lv.${lv.lv} ${esc(lv.title)} · ${F.num(lv.xp)} XP</span></span>${F.icon('chevR', 'sm')}</a>
         ${mates.map((m) => `<a href="#rec"><span class="grow"><b>${esc(m.name || '파트너')}</b> <span class="mute t-small">이번 주 ${(m.week || []).length}/${m.freq || 3}회 · Lv.${m.lv || 1}</span></span>${F.icon('chevR', 'sm')}</a>`).join('')}
       </div>`;
-    return `<div class="today-head">${head}</div>${body}
-      <div class="coachbar"><img src="${F.coachImg('hero')}" alt=""><p><b>${esc(F.coachName())} · ${esc(ph.name)}</b>${esc(UI.coachLine())}</p></div>
+    const day = UI.timeline ? `<div class="page" style="padding-top:14px">${UI.coachCard()}${UI.suppBanner()}
+        <div class="sec" style="margin-top:18px">${UI.secH('TODAY', '오늘 일정', `<a class="t-xs link" href="#supp">영양제 ›</a>`)}${UI.timeline(k)}</div></div>` : '';
+    return `${day}<div class="today-head" style="margin-top:8px">${head}</div>${body}
       <div class="page" style="padding-top:18px">${strip}<div class="sec" style="margin-top:22px">${rows}</div></div>`;
   };
 
@@ -164,11 +165,11 @@ window.F = window.F || {};
 
     const html = `<div class="page"><div class="dash">
       <section class="cell fit">${UI.cellH(`TODAY · ${F.DAY_EN[d.getDay()]} ${F.pad(d.getMonth() + 1)}.${F.pad(d.getDate())}`, `<a href="#plan">플랜</a>`)}${today}</section>
-      <section class="cell">${UI.cellH('THIS WEEK', `<a href="#rec">출석 도장</a>`)}${weekCell}</section>
-      <section class="cell">${UI.cellH('LEVEL', `<a href="#rec">배지</a>`)}${levelCell}</section>
+      <section class="cell">${UI.cellH('TODAY SCHEDULE', `<a href="#supp">영양제</a>`)}${UI.suppBanner ? UI.suppBanner() : ''}${UI.timeline ? UI.timeline(k, true) : foodCell}</section>
+      <section class="cell">${UI.cellH('COACH · 1:1', `<a href="#ask">대화 전체</a>`)}${UI.coachCard ? UI.coachCard(true) : levelCell}</section>
+      <section class="cell">${UI.cellH('THIS WEEK', `<a href="#rec">출석 도장</a>`)}${weekCell}<div class="row between" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line-soft)"><span class="t-h3">Lv.${lv.lv} ${esc(lv.title)}</span><span class="t-num mute">${F.num(lv.xp)} XP</span></div></section>
       <section class="cell">${UI.cellH('BODY', `<a href="#body">인바디</a>`)}${bodyCell}</section>
       <section class="cell">${UI.cellH('RECENT LOG', `<a href="#log">운동 일지</a>`)}${logCell}</section>
-      <section class="cell">${UI.cellH('NUTRITION', `<a href="#food">식단</a>`)}${foodCell}</section>
     </div></div>`;
     const after = (root) => {
       const el = F.$('[data-chart="weight"]', root);

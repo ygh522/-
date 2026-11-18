@@ -52,20 +52,18 @@ window.F = window.F || {};
 
     const swaps = `<div class="list">${(D.swaps || []).map((x) => `<div><span class="grow"><span class="mute">${esc(x.from)}</span> → <b>${esc(x.to)}</b></span><span class="t-num">${esc(x.save)}</span></div>`).join('')}</div>`;
     const eatout = `${(D.eatout || []).map((e) => `<details class="acc"><summary>${esc(e.place)} ${F.icon('chevD', 'sm')}</summary><div class="t-small"><p><b>고르기</b> ${esc(e.pick)}</p><p style="margin-top:4px"><b>피하기</b> ${esc(e.avoid)}</p></div></details>`).join('')}`;
-    const sr = F.S.supp[k] || {};
-    const supps = `<div>${(F.SUPPLEMENTS || []).slice().sort((a, b) => a.priority - b.priority).map((x) => `<div class="supp"><span class="si">${F.icon(SUPP_IC[x.id] || 'pill', 'sm')}</span>
-        <div style="min-width:0"><div class="row" style="gap:6px"><b>${esc(x.name)}</b><span class="t-label mute">${x.priority <= 2 ? 'CORE' : x.priority <= 4 ? 'GOOD' : 'OPTION'} · ${esc(x.evidence)}</span></div>
-          <div class="t-xs mute2">${esc(x.dose)} · ${esc(x.timing)}</div>
-          <details class="acc" style="border:0"><summary class="t-xs" style="padding:4px 0">왜 · 주의사항 ${F.icon('chevD', 'sm')}</summary><div class="t-xs"><p>${esc(x.why)}</p><p style="margin-top:4px"><b>복용</b> ${esc(x.how)}</p><p style="margin-top:4px;color:var(--hot)"><b>주의</b> ${esc(x.caution)}</p></div></details></div>
-        <button class="check ${sr[x.id] ? 'on' : ''}" data-act="supp-toggle" data-id="${x.id}" data-k="${k}" aria-label="${esc(x.name)} 복용">${F.icon('check')}</button></div>`).join('')}
-      <p class="t-xs mute" style="margin-top:10px">복용 중인 약이나 질환(신장·간·심혈관), 임신·수유 중이면 시작 전에 의사·약사와 상담하세요.${(F.SUPP_AVOID || []).length ? ` 비추천: ${F.SUPP_AVOID.map((x) => esc(x.name)).join(', ')}.` : ''}</p></div>`;
 
-    const left = `${nav}${target}${meals}`;
+    const mine = F.S.mySupps || [];
+    const mySupp = mine.length && F.E.suppSchedule
+      ? `<div class="list">${F.E.suppSchedule(k).map((p) => { const info = F.E.suppInfo(p.id) || {}; const on = !!(F.S.supp[k] || {})[p.id]; return `<div><span class="t-num" style="width:48px">${F.minToTime(p.at)}</span><span class="grow"><b>${esc(info.name || p.id)}</b> <span class="t-xs mute">${esc(((F.SUPP_SLOTS || {})[p.slot] || {}).label || '')}</span></span><button class="check ${on ? 'on' : ''}" data-act="${on ? 'supp-untake' : 'supp-take'}" data-id="${p.id}" data-ids="${p.id}" aria-label="${esc(info.name || '')} 섭취">${F.icon('check')}</button></div>`; }).join('')}</div>`
+      : `<a class="tl-add" href="#supp">${F.icon('pill', 'sm')}<span>가지고 있는 영양제를 등록하면 먹을 시간까지 챙겨 드려요</span>${F.icon('chevR', 'sm')}</a>`;
+    const left = `${nav}${UI.dietStyle ? `<div class="t-label mute" style="margin:2px 0 6px">식단 스타일 · 끼니마다 고르는 메뉴의 기본값</div>${UI.dietStyle()}` : ''}${target}${meals}`;
     const right = `<section class="sec" style="margin-top:0">${UI.secH('3 RULES', '이것만 지켜요', '')}${rules}</section>
       <section class="sec">${UI.secH('DAILY CHECK', '오늘 체크 5', '')}${checks}</section>
       <section class="sec">${UI.secH('SWAP', '바꿔 먹기', '')}${swaps}</section>
       <section class="sec">${UI.secH('EATING OUT', '외식 · 회식', '')}${eatout}</section>
-      <section class="sec">${UI.secH('SUPPLEMENTS', '영양제', '')}${supps}</section>`;
+      <section class="sec">${UI.secH('SUPPLEMENTS', '내 영양제', '<a class="t-xs link" href="#supp">관리 ›</a>')}${mySupp}</section>
+      ${UI.products ? UI.products() : ''}`;
     if (UI.isPC()) return `<div class="page">${UI.ph('NUTRITION', '쉬운 식단', '저울도, 요리 실력도 필요 없어요. 끼니마다 하나만 고르세요.')}<div class="split wide-l"><section>${left}</section><section>${right}</section></div></div>`;
     return `<div class="page">${UI.ph('NUTRITION', '쉬운 식단', '저울도, 요리 실력도 필요 없어요. 끼니마다 하나만 고르세요.')}${left}<div class="sec">${right}</div></div>`;
   };

@@ -70,9 +70,9 @@ window.F = window.F || {};
       freq: 3, days: [1, 3, 5], gymTime: '19:30',
       alarmOn: true, alarmLead: 30,
       cardio: 'treadmill', pace: 'normal', kcalAdj: 0,
-      theme: 'system', sound: true, figure: null, split: 'auto', swaps: {},
+      theme: 'system', sound: true, figure: null, split: 'auto', swaps: {}, wakeTime: '07:00', bedTime: '23:30', suppAlarm: true, dietStyle: 'auto',
     },
-    ex: {}, cardio: {}, sessions: {}, overrides: {}, inbody: [], weights: [], chat: [],
+    ex: {}, cardio: {}, sessions: {}, overrides: {}, inbody: [], weights: [], chat: [], mySupps: [],
     meals: {}, supp: {}, xp: [], xpTotal: 0, xpKeys: {}, badges: {}, active: null,
     alarmFired: {}, updatedAt: 0,
   });
@@ -275,6 +275,10 @@ window.F = window.F || {};
 
   /* ---------- Assets ---------- */
   F.figure = () => (F.S && F.S.settings && F.S.settings.figure) || (F.S && F.S.profile && F.S.profile.sex) || 'm';
+  /* Brand: 트쌤 (T-SAM) — 트레이너쌤. A square-edged dumbbell mark. */
+  F.BRAND = { name: '트쌤', en: 'T-SAM', slogan: '나만의 밀착 건강 트레이너' };
+  F.mark = () => '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="4" y="17" width="5" height="14"/><rect x="10" y="11" width="6" height="26"/><rect x="16" y="21.5" width="16" height="5"/><rect x="32" y="11" width="6" height="26"/><rect x="39" y="17" width="5" height="14"/></svg>';
+  F.logo = (big) => `<span class="logo ${big ? 'big' : ''}"><span class="lg-mark">${F.mark()}</span><b>트쌤</b>${big ? '<span class="lg-sub"><span class="t-label">T-SAM</span>나만의 밀착 건강 트레이너</span>' : ''}</span>`;
   F.exHref = (id) => '#ex-' + String(id || '').replace(/_/g, '-');
   F.img = {
     ex: (id, g) => `assets/img/ex/${id}_${g || F.figure()}.webp`,

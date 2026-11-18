@@ -10,7 +10,7 @@ window.F = window.F || {};
   const nl = (t) => esc(t).replace(/\n/g, '<br>');
 
   /* =========================================================
-     INTRO — what MY PT is, before the first question
+     INTRO — what 트쌤 is, before the first question
      ========================================================= */
   const introArt = (key, i) => {
     const ex = F.EXERCISES.db_rdl ? 'db_rdl' : Object.keys(F.EXERCISES)[0];
@@ -46,7 +46,7 @@ window.F = window.F || {};
     const root = F.$('#app');
     root.dataset.shell = '';
     root.innerHTML = `<div class="intro">
-      <div class="intro-top"><span class="logo"><i></i>MY PT</span><button class="t-small link" data-act="intro-skip">건너뛰기</button></div>
+      <div class="intro-top">${F.logo()}<button class="t-small link" data-act="intro-skip">건너뛰기</button></div>
       <div class="intro-main">
         <div class="intro-art">${introArt(sl.key, i)}</div>
         <div class="intro-text">
@@ -130,7 +130,7 @@ window.F = window.F || {};
   const buildInput = (q) => {
     const t = TR(F.S.settings.trainer);
     const rules = [
-      `너는 MY PT 앱의 퍼스널 트레이너 "${t.name}"(${t.age || 30}대 초반, ${t.title || '퍼스널 트레이너'})야. ${t.chatTone || ''}`,
+      `너는 트쌤(나만의 밀착 건강 트레이너) 앱의 퍼스널 트레이너 "${t.name}"(${t.age || 30}대 초반, ${t.title || '퍼스널 트레이너'})야. ${t.chatTone || ''}`,
       '회원은 헬스 완전 초보에서 중급으로 가는 중이야. 한국어 해요체로 4~7문장 안에서 짧고 구체적으로 답해. 무게·횟수·세트·시간을 숫자로 말하고, 왜 그런지 한 문장으로 설명해.',
       '날카로운 통증, 붓기, 저림, 가슴 통증, 어지러움이 있으면 운동을 멈추고 병원에 가라고 먼저 말해. 진단이나 약 처방은 하지 마.',
       '앱 기능을 써서 해결할 수 있으면 알려줘: 운동 시작 때 컨디션 체크(최고/보통/피곤/안 좋음, 아픈 곳, 짧게 30분), 운동마다 자세 포인트 3개 확인, 세트 후 할만했다/조금 어려웠다/너무 힘들었다 평가로 무게 자동 조정, 플랜에서 분할·이 날 루틴·운동 바꾸기, 약속 생김(대체일).',

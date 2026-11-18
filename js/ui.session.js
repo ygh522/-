@@ -188,6 +188,7 @@ window.F = window.F || {};
         <div class="t-label" style="margin-top:18px">오늘 쓸 수 있는 시간</div>
         <div class="seg s-seg" style="margin-top:8px">${Object.entries(F.TIME || { full: { label: '기본', sub: '' }, short: { label: '짧게', sub: '약 30분' } }).map(([k, v]) => `<button class="${o.time === k ? 'on' : ''}" data-act="s-time" data-v="${k}">${esc(v.label)} <small>${esc(v.sub || '')}</small></button>`).join('')}</div>
         ${o.time === 'short' && F.TIME_LINE ? `<p class="t-xs mute" style="margin-top:8px">${esc(F.TIME_LINE)}</p>` : ''}
+        ${o.cond === 'bad' ? `<p class="t-xs" style="margin-top:10px;color:#ddd">헬스장까지 가기 힘든 날이면 집에서 조용한 홈트 영상 15~20분도 충분해요. <button class="t-xs link" data-act="s-to-homefit" style="color:#fff">홈트 영상 보기 ›</button></p>` : ''}
         <div class="s-card" style="margin-top:18px">
           <div class="row between"><span class="t-label">TODAY'S PLAN</span><span class="t-num">${plan.items.length}종목 · 약 ${F.E.estimateMinutes(a.templateId, o)}분</span></div>
           <div class="s-plan">${plan.items.map((it, i) => { const ex = F.EXERCISES[it.exId]; return `<div><span class="t-num">${F.pad(i + 1)}</span><span class="grow">${esc(ex.name)}</span><span class="t-num">${F.E.isLoaded(ex) ? F.E.loadLabel(ex, it.w) + ' · ' : ''}${it.sets}세트</span></div>`; }).join('')}
@@ -466,6 +467,7 @@ window.F = window.F || {};
     a.i = 1; a.rest = null; a.cur = null;
     F.save(); SS.render();
   };
+  A['s-to-homefit'] = () => { UI._resumeAsked = true; SS.hide(); location.hash = '#homefit'; };
   A['s-fc'] = (b) => {
     const a = act(); const step = a.steps[a.i]; if (!step || step.type !== 'form') return;
     const arr = a.fc[step.exId]; const i = +b.dataset.i; arr[i] = !arr[i];

@@ -204,7 +204,7 @@ window.F = window.F || {};
             <button class="btn ghost block" style="margin-top:8px;color:var(--bad);border-color:var(--bad)" data-act="reset">${F.icon('trash', 'sm')}모든 데이터 초기화</button>
           </section>
 
-          <section class="sec"><p class="t-xs mute">MY PT는 일반적인 운동·영양 가이드를 제공해요. 질환이 있거나 약을 복용 중이라면 운동·식단·영양제 시작 전 의사·약사와 상담하세요. 운동 중 날카로운 통증, 어지러움, 가슴 통증이 있으면 즉시 중단하세요.</p></section>
+          <section class="sec"><p class="t-xs mute">트쌤은 일반적인 운동·영양 가이드를 제공해요. 질환이 있거나 약을 복용 중이라면 운동·식단·영양제 시작 전 의사·약사와 상담하세요. 운동 중 날카로운 통증, 어지러움, 가슴 통증이 있으면 즉시 중단하세요.</p></section>
         </section>
       </div></div>`;
   };
@@ -271,7 +271,7 @@ window.F = window.F || {};
     if (!f) return;
     try {
       const data = JSON.parse(await f.text());
-      if (data.app !== 'mypt' || !data.state || !data.state.profile) throw new Error('MY PT 백업 파일이 아니에요');
+      if (data.app !== 'mypt' || !data.state || !data.state.profile) throw new Error('트쌤(MY PT) 백업 파일이 아니에요');
       if (!(await F.ask({ label: 'RESTORE', title: '백업으로 바꿀까요?', body: '지금 내 기록이 백업 파일 내용으로 바뀌어요.', ok: '바꾸기', danger: true }))) return;
       const st = F.normalize(data.state);
       for (const r of st.inbody || []) {

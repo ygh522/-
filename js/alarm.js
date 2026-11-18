@@ -97,7 +97,7 @@ window.F = window.F || {};
 
   A.exportICS = (weeks = 8) => {
     const s = F.S;
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MY PT//KO', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:MY PT 운동', 'X-WR-TIMEZONE:Asia/Seoul',
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//T-SAM//KO', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:트쌤 운동', 'X-WR-TIMEZONE:Asia/Seoul',
       'BEGIN:VTIMEZONE', 'TZID:Asia/Seoul', 'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:+0900', 'TZOFFSETTO:+0900', 'TZNAME:KST', 'END:STANDARD', 'END:VTIMEZONE'];
     let k = F.today();
     const end = F.addDays(k, weeks * 7);
@@ -117,7 +117,7 @@ window.F = window.F || {};
           `UID:mypt-${k}@mypt.local`, `DTSTAMP:${dtstamp}`,
           `DTSTART;TZID=Asia/Seoul:${stamp(k, st)}`, `DTEND;TZID=Asia/Seoul:${stamp(k, Math.min(st + dur, 23 * 60 + 59))}`,
           fold(`SUMMARY:${icsEsc(`🏋️ 헬스 · ${t.name}`)}`),
-          fold(`DESCRIPTION:${icsEsc(`${F.josa(F.coachName(), '과/와')} ${t.name}\n${exNames}\n+ 유산소\nMY PT 앱에서 '운동 시작'을 눌러 주세요.`)}`),
+          fold(`DESCRIPTION:${icsEsc(`${F.josa(F.coachName(), '과/와')} ${t.name}\n${exNames}\n+ 유산소\n트쌤 앱에서 '운동 시작'을 눌러 주세요.`)}`),
           'BEGIN:VALARM', 'ACTION:DISPLAY', fold(`DESCRIPTION:${icsEsc('운동 갈 시간이에요!')}`), 'TRIGGER:PT0M', 'END:VALARM');
         if (+s.settings.alarmLead > 0) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', fold(`DESCRIPTION:${icsEsc(`${s.settings.alarmLead}분 뒤 운동 시작`)}`), `TRIGGER:-PT${+s.settings.alarmLead}M`, 'END:VALARM');
         lines.push('END:VEVENT');

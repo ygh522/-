@@ -133,7 +133,7 @@ window.F = window.F || {};
         ${st.hist.length ? `<p class="t-xs mute" style="margin-top:10px">최근 기록: ${st.hist.slice(-3).map((h) => `${F.dateLabel(h.d, false)} ${h.min}분(${F.E.RATING[h.rating].label})`).join(' · ')}</p>` : ''}
       </div>`;
 
-    return `<div class="page">${UI.ph('PLAN', '운동 플랜', `${esc(F.josa(F.coachName(), '이/가'))} 짠 주 ${s.settings.freq}회 루틴이에요. 기록할수록 무게와 유산소 강도가 내 몸에 맞게 조정돼요. <a class="link" href="#learn">왜 이렇게 운동하나요? ›</a>`)}
+    return `<div class="page">${UI.ph('PLAN', '운동 플랜', `${esc(F.josa(F.coachName(), '이/가'))} 짠 주 ${s.settings.freq}회 루틴이에요. 기록할수록 무게와 유산소 강도가 내 몸에 맞게 조정돼요. <a class="link" href="#learn">왜 이렇게 운동하나요? ›</a> · <a class="link" href="#homefit">헬스장 못 가는 날 홈트 영상 ›</a>`)}
       <div class="split w3">
         <section>${phaseCard}<div class="sec">${UI.secH('SCHEDULE', '주간 스케줄', '')}${weekHtml}</div></section>
         <section>${UI.secH('ROUTINE', '루틴 · 무게 처방', '')}${routine}</section>

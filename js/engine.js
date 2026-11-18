@@ -208,6 +208,11 @@ window.F = window.F || {};
     if (rec && rec.pick && rec.pick[slot] && D.meals[rec.pick[slot]]) return rec.pick[slot];
     const ids = D.slots[slot] || [];
     if (!ids.length) return null;
+    const STYLE = { cvs: ['편의점'], home: ['집밥', '5분'], out: ['외식', '배달'] }[(S().settings.dietStyle) || 'auto'];
+    if (STYLE && slot !== 'snack') {
+      const pref = ids.filter((id) => D.meals[id] && STYLE.some((t) => (D.meals[id].tag || '').includes(t)));
+      if (pref.length) return pref[dayIndex(k) % pref.length];
+    }
     if (slot === 'snack') return gym ? (ids.find((x) => x.includes('shake')) || ids[0]) : (ids.find((x) => !x.includes('shake')) || ids[0]);
     return ids[(dayIndex(k) + (slot === 'lunch' ? 1 : slot === 'dinner' ? 2 : 0)) % ids.length];
   };

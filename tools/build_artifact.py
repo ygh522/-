@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package MY PT for a claude.ai artifact (the version both people open from one link).
+"""Package 트쌤 (T-SAM) for a claude.ai artifact (the version both people open from one link).
 
 claude.ai wraps the page in its own <!doctype html><head><body>, so the page file holds only the
 title, stylesheets, the app root and scripts. Everything else is published next to it under the
@@ -21,7 +21,7 @@ OUT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, '
 index = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
 scripts = re.findall(r'<script src="([^"]+)"></script>', index)
 
-page = ['<title>MY PT</title>',
+page = ['<title>트쌤</title>',
         '<link rel="preconnect" href="https://fonts.googleapis.com">',
         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
         # Chakra Petch (numbers) from Google Fonts; Wanted Sans (Korean text) is published with the page

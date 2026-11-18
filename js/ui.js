@@ -127,6 +127,8 @@ window.F = window.F || {};
     { id: 'log', mo: '기록', pc: '운동 일지', icon: 'list' },
     { id: 'body', pc: '바디 · 인바디', icon: 'body', pcOnly: true },
     { id: 'rec', pc: '출석 · 레벨', icon: 'stamp', pcOnly: true },
+    { id: 'supp', pc: '내 영양제', icon: 'pill', pcOnly: true },
+    { id: 'homefit', pc: '홈트 영상', icon: 'play', pcOnly: true },
     { id: 'ask', pc: '코치에게 질문', icon: 'chat', pcOnly: true },
     { id: 'learn', pc: '운동 원리', icon: 'book', pcOnly: true },
     { id: 'set', pc: '설정', icon: 'gear', pcOnly: true },
@@ -138,7 +140,7 @@ window.F = window.F || {};
     root.dataset.shell = '1';
     root.innerHTML = `
       <header class="topbar">
-        <a class="logo" href="#home"><i></i>MY PT</a>
+        <a href="#home" aria-label="트쌤 홈">${F.logo()}</a>
         <div class="top-right">
           <span class="sync-dot ${F.Sync.mode === 'cloud' ? (F.Sync.status === 'error' ? 'err' : 'on') : ''}" title="${F.Sync.mode === 'cloud' ? '클라우드 동기화' : '이 기기에만 저장'}"></span>
           <a class="who" href="#set" id="who"></a>
@@ -147,6 +149,7 @@ window.F = window.F || {};
       </header>
       <main id="view" tabindex="-1"></main>
       <nav class="tabbar" aria-label="메인 메뉴">
+        <a class="side-brand pc-only" href="#home">${F.logo(true)}</a>
         ${NAV.map((t) => `<a href="#${t.id}" data-tab="${t.id}" class="${t.pcOnly ? 'pc-only' : ''}">${F.icon(t.icon)}<span class="mo-only">${t.mo || ''}</span><span class="pc-only">${t.pc}</span></a>`).join('')}
       </nav>
       <a class="fab-coach mo-only" href="#ask" id="fab-coach" aria-label="코치에게 질문"><img src="${F.coachImg('face')}" alt=""><span>질문</span></a>
@@ -185,7 +188,7 @@ window.F = window.F || {};
     const main = F.$('#view');
     main.innerHTML = html;
     const tab = TAB_OF[r.name] || r.name;
-    const moTab = ['body', 'rec', 'log'].includes(tab) ? 'log' : tab;
+    const moTab = { body: 'log', rec: 'log', supp: 'food', homefit: 'plan', split: 'plan', ask: 'home', learn: 'home' }[tab] || tab;
     F.$$('.tabbar a').forEach((a) => a.classList.toggle('on', a.dataset.tab === (UI.isPC() ? tab : moTab)));
     UI.updateTop();
     if (out && out.after) requestAnimationFrame(() => out.after(main));
@@ -255,7 +258,7 @@ window.F = window.F || {};
   UI.boot = () => {
     const root = F.$('#app');
     root.dataset.shell = '';
-    root.innerHTML = `<div class="boot"><span class="logo"><i></i>MY PT</span>
+    root.innerHTML = `<div class="boot">${F.logo(true)}
       <div class="t-h2">내 기록을 불러오는 중이에요</div>
       <div class="bar"><i></i></div>
       <p class="t-small mute">휴대폰과 PC의 기록을 맞추고 있어요.</p></div>`;
@@ -269,7 +272,7 @@ window.F = window.F || {};
     if (!ONB.d) { ONB.d = onbDefaults(); if (F.Sync.me && F.Sync.me.name) ONB.d.name = String(F.Sync.me.name).slice(0, 12); }
     const d = ONB.d;
     const steps = ['코치', '기본 정보', '목표', '스케줄', '시작'];
-    const top = `<div class="onb-top"><div class="row between"><span class="logo"><i></i>MY PT</span><span class="t-label mute">${String(ONB.step + 1).padStart(2, '0')} / 05</span></div>
+    const top = `<div class="onb-top"><div class="row between">${F.logo()}<span class="t-label mute">${String(ONB.step + 1).padStart(2, '0')} / 05</span></div>
       <div class="ticks" style="margin-top:14px">${steps.map((_, i) => `<i class="${i <= ONB.step ? 'on' : ''}"></i>`).join('')}</div></div>`;
     let body = '', foot = '';
     const bmi = F.E.bmi(d.weight, d.height);
