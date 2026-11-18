@@ -30,11 +30,11 @@
   - 여자친구는 Share → 이메일 초대 → **편집자(Editor)** 권한으로 초대해야 저장 · 사진 업로드가 됨(공개 링크는 보기 전용).
   - claude.ai 안에서는 외부 영상 삽입이 금지라 홈트 영상은 유튜브로 열림. 앱 안 재생은 Vercel/파일 버전에서 동작.
 - 테스트: tests/ 의 Playwright 검사 모두 통과(휴대폰 390×844, PC 1920×1080 · 1440×810, 다크 모드).
-- 커밋: 브랜치 `claude/personal-fitness-app-0sjtoe` (원래 저장소 ygh522/- 에는 GitHub 권한 403으로 푸시 못 함).
+- 코드: GitHub 저장소 ygh522/- 의 `claude/personal-fitness-app-0sjtoe` 브랜치에 전부 올라가 있음(2026-11-18 푸시).
 
 ## 4. 남은 일 (우선순위 순)
 1. **Vercel 배포** (프로젝트 이름 `t-sam`): 로컬에서 `npx vercel deploy --prod` (vercel.json 포함, 빌드 없음). 클라우드 세션에서는 Vercel API가 막혀 못 했음.
-2. **GitHub에 올리기**: 새 저장소(예: t-sam)를 만들고 푸시. 이후 Vercel을 그 저장소에 연결하면 자동 배포.
+2. **GitHub 정리**: 코드는 ygh522/- 의 `claude/personal-fitness-app-0sjtoe` 브랜치에 있음. 사용자와 상의해 main으로 합치거나 새 저장소(예: t-sam)로 옮긴 뒤, Vercel을 그 저장소에 연결하면 푸시할 때마다 자동 배포.
 3. 실제 휴대폰에서 확인: 홈트 썸네일 · 앱 안 재생 · 가로 전환, 영양제 알림 소리, 쿠팡 링크.
 4. 확인 못 한 영상 2편: 빅씨스 `fbYu5yzo4lc`, 권혁 `SwlS857LjVc` — 재생 안 되면 교체/삭제.
 5. (선택) Vercel 버전에도 동기화가 필요하면: 동기화 코드 + Vercel 저장소(Blob 등)로 구현 검토. 지금 Vercel 버전은 기기별 저장 + 백업 파일.
