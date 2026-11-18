@@ -350,26 +350,91 @@ window.F = window.F || {};
   };
 
   /* =========================================================
-     HOME WORKOUT — Korean YouTube routines for fat loss
+     HOME WORKOUT — legendary Korean routines, played in the app (landscape, full screen)
      ========================================================= */
-  let hfType = '전체';
-  V.homefit = () => {
-    const R = F.RECO || {};
-    const vids = R.videos || [];
-    const types = ['전체'].concat([...new Set(vids.map((v) => v.type))]);
-    const list = vids.filter((v) => hfType === '전체' || v.type === hfType);
-    const card = (v) => `<a class="vcard" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">
-        <div class="vc-top"><span class="tag dark">${esc(v.type)}</span>${v.quiet ? '<span class="tag line">층간소음 걱정 없음</span>' : ''}<span class="tag">${esc(v.level || '')}</span>${v.minutes ? `<span class="t-num">${v.minutes}분</span>` : ''}</div>
-        <b class="vc-title">${esc(v.title)}</b>
-        <span class="t-xs mute">${esc(v.channel)}</span>
-        <p class="t-small mute2">${esc(v.why || '')}</p>
-        <span class="vc-go">${F.icon('play', 'sm')}유튜브에서 보기 ↗</span></a>`;
-    const chans = (R.channels || []).map((c) => `<a class="chan" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer"><b>${esc(c.name)}</b><span class="t-xs mute2">${esc(c.why || '')}</span></a>`).join('');
-    return `<div class="page">${UI.ph('HOME TRAINING', '홈트 영상', '헬스장에 못 가는 날, 집에서 따라 하기 좋은 한국 유튜버들의 살 빠지는 루틴이에요. 처음엔 영상 속도를 다 따라가지 말고, 자세가 무너지면 쉬었다 가요.')}
-      ${vids.length ? `<div class="chips">${types.map((t) => `<button class="chip ${t === hfType ? 'on' : ''}" data-act="hf-type" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>
-      <div class="vgrid">${list.map(card).join('')}</div>` : '<div class="empty">추천 영상을 준비하고 있어요.</div>'}
-      ${chans ? `<section class="sec">${UI.secH('CHANNELS', '구독해 두면 좋은 채널', '')}<div class="chans">${chans}</div></section>` : ''}
-      <p class="t-xs mute" style="margin-top:12px">영상은 유튜브에서 열려요. 무릎 · 허리가 아프면 점프 동작은 빼고 같은 동작을 제자리에서 천천히 해요.</p></div>`;
+  const inClaude = () => !!(window.claude && typeof window.claude.use === 'function');
+  const allVids = () => (F.HOMEFIT || []).concat(((F.RECO || {}).videos || []).filter((v) => v.id && !(F.HOMEFIT || []).some((h) => h.id === v.id)));
+  const catLabel = (c) => ((F.HOMEFIT_CATS || []).find((x) => x.id === c) || { label: c || '추가 추천' }).label;
+  const viewsLabel = (n) => (n ? `${F.num(n)}만 회` : '');
+  const ytUrl = (id) => `https://www.youtube.com/watch?v=${id}`;
+  let hf = { cat: 'all', quiet: false, short: false };
+  const vcard = (v, small) => {
+    const thumb = inClaude() ? '' : `<img class="yt" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt="" loading="lazy">`;
+    const inner = `<div class="vthumb">${thumb}<span class="vplay">${F.icon('play')}</span>${v.min ? `<span class="vdur t-num">${v.min}분</span>` : ''}</div>
+      <div class="vbody"><b class="vc-title">${esc(v.title)}</b>
+        <span class="t-xs mute">${esc(v.ch || v.channel || '')}${v.views ? ` · 조회수 약 ${viewsLabel(v.views)}` : ''}</span>
+        ${small ? '' : `<p class="t-small mute2">${esc(v.desc || v.why || '')}</p>`}
+        <div class="vc-top"><span class="tag">${esc(v.level || '초급')}</span>${v.quiet ? '<span class="tag line">층간소음 걱정 없음</span>' : ''}${v.knee ? '<span class="tag line">무릎 부담 적음</span>' : ''}</div></div>`;
+    return inClaude()
+      ? `<a class="vcard ${small ? 'sm' : ''}" href="${ytUrl(v.id)}" target="_blank" rel="noopener noreferrer">${inner}</a>`
+      : `<button class="vcard ${small ? 'sm' : ''}" data-act="hf-play" data-id="${v.id}" aria-label="${esc(v.title)} 재생">${inner}</button>`;
   };
-  A['hf-type'] = (el) => { hfType = el.dataset.v; UI.refresh(); };
+  const brokenThumbs = (root) => (root || document).querySelectorAll('img.yt').forEach((img) => img.addEventListener('error', () => img.remove(), { once: true }));
+  V.homefit = () => {
+    const vids = allVids();
+    const cats = (F.HOMEFIT_CATS || []).filter((c) => vids.some((v) => v.cat === c.id));
+    const list = vids.filter((v) => (hf.cat === 'all' || v.cat === hf.cat) && (!hf.quiet || v.quiet) && (!hf.short || (v.min && v.min <= 10)));
+    const groups = (hf.cat === 'all' ? cats.map((c) => c.id) : [hf.cat]).map((cid) => ({ cid, items: list.filter((v) => v.cat === cid).sort((a, b) => (b.views || 0) - (a.views || 0)) })).filter((g) => g.items.length);
+    const extra = list.filter((v) => !cats.some((c) => c.id === v.cat));
+    const html = `<div class="page">${UI.ph('HOME TRAINING', '홈트 영상', `헬스장에 못 가는 날을 위한 국내 홈트 레전드 루틴만 모았어요. ${inClaude() ? 'claude.ai 안에서는 영상이 유튜브로 열려요.' : '누르면 앱 안에서 가로 전체화면으로 바로 재생돼요.'}`)}
+      <div class="chips">${[['all', '전체']].concat(cats.map((c) => [c.id, c.label])).map(([id, l]) => `<button class="chip ${hf.cat === id ? 'on' : ''}" data-act="hf-cat" data-v="${id}">${esc(l)}</button>`).join('')}</div>
+      <div class="chips" style="margin-top:8px"><button class="chip ${hf.quiet ? 'on' : ''}" data-act="hf-toggle" data-k="quiet">${F.icon('check', 'sm')}층간소음 걱정 없음</button><button class="chip ${hf.short ? 'on' : ''}" data-act="hf-toggle" data-k="short">${F.icon('clock', 'sm')}10분 이하</button></div>
+      ${groups.map((g) => `<section class="sec">${UI.secH(((F.HOMEFIT_CATS || []).find((c) => c.id === g.cid) || {}).en || '', `${esc(catLabel(g.cid))} <span class="t-num mute" style="font-size:14px">${g.items.length}</span>`, '')}<div class="vgrid">${g.items.map((v) => vcard(v)).join('')}</div></section>`).join('')}
+      ${extra.length ? `<section class="sec">${UI.secH('MORE', '추가 추천', '')}<div class="vgrid">${extra.map((v) => vcard(v)).join('')}</div></section>` : ''}
+      ${!list.length ? '<div class="empty" style="margin-top:14px">조건에 맞는 영상이 없어요. 필터를 바꿔 보세요.</div>' : ''}
+      <p class="t-xs mute" style="margin-top:14px">처음엔 영상 속도를 다 따라가지 말고, 자세가 무너지면 쉬었다 가요. 무릎 · 허리가 아프면 점프 동작은 빼고 같은 동작을 제자리에서 천천히 해요. 조회수는 영상 소개 기준이에요.</p></div>`;
+    return { html, after: (root) => brokenThumbs(root) };
+  };
+  A['hf-cat'] = (el) => { hf.cat = el.dataset.v; UI.refresh(); };
+  A['hf-toggle'] = (el) => { hf[el.dataset.k] = !hf[el.dataset.k]; UI.refresh(); };
+
+  /** Two picks for today (rest days on home): a fat-burning routine and a stretch, rotating by date. */
+  UI.homefitPicks = (k) => {
+    const vids = allVids(); if (!vids.length) return '';
+    const n = Math.floor(F.parseKey(k || F.today()).getTime() / 864e5);
+    const burn = vids.filter((v) => v.cat === 'cardio' && v.quiet);
+    const core = vids.filter((v) => v.cat === 'core');
+    const st = vids.filter((v) => v.cat === 'stretch');
+    const picks = [burn[n % Math.max(1, burn.length)], (n % 2 ? core : st)[n % Math.max(1, (n % 2 ? core : st).length)]].filter(Boolean);
+    return `<section class="sec" style="padding:0 var(--pad)">${UI.secH('HOME TRAINING', '오늘의 홈트', '<a class="t-xs link" href="#homefit">전체 보기 ›</a>')}<div class="vgrid">${picks.map((v) => vcard(v, true)).join('')}</div></section>`;
+  };
+
+  /* the in-app player: full screen, landscape (rotates itself when the phone can't), back to the list */
+  let player = null;
+  const fitRotate = () => { if (player) player.classList.toggle('rotate', window.innerHeight > window.innerWidth); }; // still portrait after the lock → turn the stage itself
+  UI.playVideo = async (v) => {
+    closePlayer(true);
+    const el = document.createElement('div');
+    el.className = 'vplayer';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', v.title);
+    el.innerHTML = `<div class="vp-stage"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&playsinline=1&rel=0&modestbranding=1&fs=1" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="vp-bar"><button class="vp-back" data-act="hf-close">${F.icon('arrowL', 'sm')}목록으로</button><span class="vp-title">${esc(v.title)}</span><a class="vp-yt" href="${ytUrl(v.id)}" target="_blank" rel="noopener noreferrer">유튜브에서 열기 ↗</a></div></div>`;
+    document.body.appendChild(el);
+    document.body.classList.add('noscroll');
+    player = el;
+    try { history.pushState({ tsamPlayer: 1 }, '', location.href); el.dataset.pushed = '1'; } catch (e) { /* ignore */ }
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch (e) { /* not allowed: stays full window */ }
+    try { if (screen.orientation && screen.orientation.lock) { await screen.orientation.lock('landscape'); el.dataset.locked = '1'; } } catch (e) { /* e.g. iPhone: rotate with CSS */ }
+    fitRotate();
+    setTimeout(fitRotate, 400);
+  };
+  const closePlayer = (silent) => {
+    if (!player) return;
+    const el = player;
+    player = null;
+    try { if (document.fullscreenElement) document.exitFullscreen(); else if (document.webkitFullscreenElement) document.webkitExitFullscreen(); } catch (e) { /* ignore */ }
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) { /* ignore */ }
+    el.remove();
+    if (!F.$('.sheet-wrap') && !F.$('#session.on')) document.body.classList.remove('noscroll');
+    if (!silent && el.dataset.pushed === '1' && history.state && history.state.tsamPlayer) history.back();
+  };
+  A['hf-play'] = (el) => { const v = allVids().find((x) => x.id === el.dataset.id); if (v) UI.playVideo(v); };
+  A['hf-close'] = () => closePlayer(false);
+  window.addEventListener('popstate', () => { if (player) closePlayer(true); });
+  window.addEventListener('resize', fitRotate);
+  document.addEventListener('keydown', (e) => { if (player && e.key === 'Escape' && !document.fullscreenElement) closePlayer(false); });
 })(window.F);

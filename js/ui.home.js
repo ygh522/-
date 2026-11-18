@@ -62,7 +62,8 @@ window.F = window.F || {};
           <div class="list"><div><span class="num-idx">01</span><span class="grow">가볍게 걷기 30분 (8,000보)</span></div>
           <div><span class="num-idx">02</span><span class="grow">단백질 ${tg.protein}g — 매 끼니 손바닥 1개</span></div>
           <div><span class="num-idx">03</span><span class="grow">물 8컵 · 7시간 이상 수면</span></div></div></div>
-        <div class="btn-row" style="padding:12px var(--pad) 0"><a class="btn" href="#homefit">${F.icon('play', 'sm')}집에서 홈트 영상</a><button class="btn" data-act="start-free">${F.icon('plus', 'sm')}헬스장 추가 운동</button></div>`;
+        <div class="btn-row" style="padding:12px var(--pad) 0"><a class="btn" href="#homefit">${F.icon('play', 'sm')}집에서 홈트 영상</a><button class="btn" data-act="start-free">${F.icon('plus', 'sm')}헬스장 추가 운동</button></div>
+        ${UI.homefitPicks ? `<div style="margin-top:18px">${UI.homefitPicks(k)}</div>` : ''}`;
     }
     const strip = `<div class="weekstrip">${week.map((w) => `<a class="wd ${w.k === k ? 'today' : ''}" href="#plan"><span class="t-label">${F.DAY_EN[w.dow]}</span><span class="dn">${F.parseKey(w.k).getDate()}</span>${UI.stamp(w.status === 'today' ? 'today' : w.status)}</a>`).join('')}</div>
       <div class="row wrap t-xs" style="margin-top:8px;gap:6px"><span class="${ws.done >= ws.freq ? 'pill-ok' : 'tag'}">이번 주 ${ws.done}/${ws.freq}회</span><span class="${ws.weekdayOk ? 'pill-ok' : 'tag'}">주중 ${ws.weekdayDone}/2회</span>${F.E.streakWeeks() ? `<span class="tag line">${F.E.streakWeeks()}주 연속</span>` : ''}</div>`;

@@ -2,7 +2,7 @@
 const VERSION = 'tsam-v4';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/core.js', 'js/sync.js', 'js/data.program.js', 'js/data.diet.js', 'js/data.coach.js', 'js/data.supp.js', 'js/data.reco.js', 'js/data.exercises.js', 'js/data.nutrition.js', 'js/engine.js', 'js/charts.js',
+  'js/core.js', 'js/sync.js', 'js/data.program.js', 'js/data.diet.js', 'js/data.coach.js', 'js/data.supp.js', 'js/data.homefit.js', 'js/data.reco.js', 'js/data.exercises.js', 'js/data.nutrition.js', 'js/engine.js', 'js/charts.js',
   'js/ocr.js', 'js/alarm.js', 'js/ui.js', 'js/ui.home.js', 'js/ui.plan.js', 'js/ui.session.js', 'js/ui.lib.js',
   'js/ui.food.js', 'js/ui.body.js', 'js/ui.rec.js', 'js/ui.coach.js', 'js/ui.day.js', 'js/app.js',
   'vendor/fonts/wanted-sans/WantedSansVariable.css', 'vendor/fonts/chakra-petch/chakra-petch.css',

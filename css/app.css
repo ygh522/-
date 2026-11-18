@@ -920,3 +920,32 @@ details.acc > div { padding-bottom: 12px; }
 .coach-mini b { display: block; font-size: 12px; color: var(--ink-3); }
 .coach-mini p { font-size: 14px; font-weight: 600; line-height: 1.55; }
 .callout.hot { color: var(--ink); }
+
+/* home-workout cards + in-app landscape player */
+button.vcard { text-align: left; width: 100%; background: var(--surface); color: inherit; }
+.vcard { padding: 0; overflow: hidden; }
+.vthumb { position: relative; aspect-ratio: 16 / 9; background: #111; overflow: hidden; }
+.vthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vplay { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 52px; height: 52px; display: grid; place-items: center; background: rgba(0, 0, 0, .78); color: #fff; }
+.vdur { position: absolute; right: 8px; bottom: 8px; background: #000; color: #fff; font-size: 12px; padding: 2px 6px; }
+.vbody { padding: 12px 14px 14px; display: grid; gap: 6px; }
+.vcard.sm .vbody { padding: 10px 12px 12px; }
+.vcard.sm .vc-title { font-size: 14px; }
+.vplayer { position: fixed; inset: 0; z-index: 300; background: #000; color: #fff; }
+.vp-stage { position: absolute; inset: 0; }
+.vp-stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+.vp-bar { position: absolute; left: 0; right: 0; top: 0; display: flex; gap: 10px; align-items: center; padding: 10px max(12px, env(safe-area-inset-left, 0px)) 18px; background: linear-gradient(rgba(0, 0, 0, .75), rgba(0, 0, 0, 0)); pointer-events: none; }
+.vp-bar > * { pointer-events: auto; }
+.vp-back { display: inline-flex; gap: 6px; align-items: center; height: 38px; padding: 0 14px; background: #fff; color: #000; font-weight: 800; font-size: 14px; flex: none; }
+.vp-title { flex: 1; min-width: 0; font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
+.vp-yt { flex: none; font-size: 12px; font-weight: 800; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, .5); color: #fff; }
+.vplayer.rotate .vp-stage { inset: auto; width: 100vh; height: 100vw; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(90deg); }
+@media (max-width: 520px) { .vp-title { display: none; } }
+/* phones: compact rows so the long list scans quickly */
+[data-mode="mobile"] .vgrid .vcard { display: grid; grid-template-columns: 136px minmax(0, 1fr); align-items: start; }
+[data-mode="mobile"] .vgrid .vthumb { aspect-ratio: 16 / 10; height: 100%; min-height: 86px; }
+[data-mode="mobile"] .vgrid .vplay { width: 34px; height: 34px; }
+[data-mode="mobile"] .vgrid .vbody { padding: 9px 10px 10px; gap: 4px; }
+[data-mode="mobile"] .vgrid .vc-title { font-size: 14px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+[data-mode="mobile"] .vgrid .vbody p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; }
+[data-mode="mobile"] .vgrid { gap: 8px; }
